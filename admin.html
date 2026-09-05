@@ -1,0 +1,392 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Parlay Club Admin</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div class="wrap">
+
+  <div class="topbar">
+    <div class="brand">
+      <h1>Admin</h1>
+      <span class="season">Enter results</span>
+    </div>
+    <div class="navlinks">
+      <a class="btn small" href="index.html">Dashboard</a>
+      <button class="btn ghost small" id="signout">Sign out</button>
+    </div>
+  </div>
+
+  <div class="msg ok" id="ok"></div>
+  <div class="msg err" id="err"></div>
+  <div class="msg info" id="info"></div>
+
+  <!-- SETUP -->
+  <div class="card" id="setup">
+    <h2>Connect to the repo</h2>
+    <p class="sub">Stored in this browser only. Nobody else can see it.</p>
+    <div class="grid-form">
+      <div class="row2">
+        <div><label class="fl" for="owner">GitHub username</label><input type="text" id="owner" placeholder="your-username" autocomplete="off"></div>
+        <div><label class="fl" for="repo">Repo name</label><input type="text" id="repo" placeholder="parlay-club" autocomplete="off"></div>
+      </div>
+      <div class="row2">
+        <div><label class="fl" for="branch">Branch</label><input type="text" id="branch" value="main" autocomplete="off"></div>
+        <div><label class="fl" for="token">Access token</label><input type="password" id="token" placeholder="github_pat_..." autocomplete="off"></div>
+      </div>
+      <div>
+        <button class="btn primary" id="connect">Connect</button>
+        <div class="hint">Fine-grained token, this repo only, Contents set to Read and write. See the README for the click path.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- EDITOR -->
+  <div id="app" style="display:none">
+
+    <div class="card">
+      <h2 id="editorTitle">Add a week</h2>
+      <p class="sub" id="editorSub">Set the dates, tap W or L for each pick, then save.</p>
+
+      <div class="grid-form" style="margin-bottom:18px">
+        <div class="row2">
+          <div><label class="fl" for="start">Start date</label><input type="date" id="start"></div>
+          <div><label class="fl" for="end">End date</label><input type="date" id="end"></div>
+        </div>
+        <div>
+          <label class="fl" for="label">Week label</label>
+          <input type="text" id="label" placeholder="9/5-9/6 Weekend">
+          <div class="hint">Auto-fills from the dates. Type over it for bowl week, playoffs, whatever.</div>
+        </div>
+      </div>
+
+      <div id="entries"></div>
+
+      <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:6px">
+        <button class="btn primary" id="save">Save week</button>
+        <button class="btn ghost" id="clear">Clear form</button>
+        <button class="btn ghost" id="cancelEdit" style="display:none">Cancel edit</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Logged weeks</h2>
+      <p class="sub">Newest first. Edit reloads the week into the form above.</p>
+      <div id="weeklist"></div>
+    </div>
+  </div>
+
+  <p class="footnote">Every save commits results.json to the repo, so mistakes are recoverable from the commit history.</p>
+</div>
+
+<script src="app.js"></script>
+<script>
+let STATE = { owner: "", repo: "", branch: "main", token: "" };
+let DATA = null;
+let SHA = null;
+let EDITING = null; // week id being edited
+
+const $ = id => document.getElementById(id);
+
+/* ---------- messaging ---------- */
+function say(kind, text) {
+  ["ok", "err", "info"].forEach(k => $(k).classList.remove("show"));
+  if (!text) return;
+  const el = $(kind);
+  el.textContent = text;
+  el.classList.add("show");
+  if (kind === "ok") setTimeout(() => el.classList.remove("show"), 6000);
+}
+
+/* ---------- github ---------- */
+function apiUrl() {
+  return `https://api.github.com/repos/${STATE.owner}/${STATE.repo}/contents/${CONFIG.file}`;
+}
+
+function headers() {
+  return {
+    "Authorization": "Bearer " + STATE.token,
+    "Accept": "application/vnd.github+json",
+    "X-GitHub-Api-Version": "2022-11-28"
+  };
+}
+
+function b64encode(str) {
+  const bytes = new TextEncoder().encode(str);
+  let bin = "";
+  bytes.forEach(b => bin += String.fromCharCode(b));
+  return btoa(bin);
+}
+
+function b64decode(b64) {
+  const bin = atob(b64.replace(/\s/g, ""));
+  const bytes = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  return new TextDecoder().decode(bytes);
+}
+
+async function fetchFile() {
+  const res = await fetch(apiUrl() + "?ref=" + encodeURIComponent(STATE.branch) + "&t=" + Date.now(), {
+    headers: headers(), cache: "no-store"
+  });
+  if (res.status === 404) throw new Error("results.json not found in that repo or branch.");
+  if (res.status === 401) throw new Error("Token rejected. Check that it is valid and not expired.");
+  if (res.status === 403) throw new Error("Token lacks permission. It needs Contents: Read and write on this repo.");
+  if (!res.ok) throw new Error("GitHub returned " + res.status + ".");
+  const json = await res.json();
+  SHA = json.sha;
+  return normalize(JSON.parse(b64decode(json.content)));
+}
+
+async function commitFile(nextData, message) {
+  const body = {
+    message,
+    content: b64encode(JSON.stringify(nextData, null, 2) + "\n"),
+    branch: STATE.branch,
+    sha: SHA
+  };
+  const res = await fetch(apiUrl(), { method: "PUT", headers: headers(), body: JSON.stringify(body) });
+  if (res.status === 409) throw new Error("Someone else saved first. Reload the page and redo this entry.");
+  if (!res.ok) {
+    let detail = "";
+    try { detail = " " + (await res.json()).message; } catch (e) {}
+    throw new Error("Save failed (" + res.status + ")." + detail);
+  }
+  const json = await res.json();
+  SHA = json.content.sha;
+}
+
+/* ---------- session ---------- */
+function loadSession() {
+  const r = repoSettings();
+  if (r) { STATE.owner = r.owner || ""; STATE.repo = r.repo || ""; STATE.branch = r.branch || "main"; }
+  const t = localStorage.getItem("pc_token");
+  if (t) STATE.token = t;
+  $("owner").value = STATE.owner;
+  $("repo").value = STATE.repo;
+  $("branch").value = STATE.branch;
+  $("token").value = STATE.token;
+  if (STATE.owner && STATE.repo && STATE.token) connect(true);
+}
+
+async function connect(silent) {
+  STATE.owner = $("owner").value.trim();
+  STATE.repo = $("repo").value.trim();
+  STATE.branch = $("branch").value.trim() || "main";
+  STATE.token = $("token").value.trim();
+  if (!STATE.owner || !STATE.repo || !STATE.token) { say("err", "Fill in username, repo, and token."); return; }
+  say("info", "Connecting...");
+  try {
+    DATA = await fetchFile();
+  } catch (e) {
+    say("err", e.message);
+    $("app").style.display = "none";
+    return;
+  }
+  localStorage.setItem("pc_repo", JSON.stringify({ owner: STATE.owner, repo: STATE.repo, branch: STATE.branch }));
+  localStorage.setItem("pc_token", STATE.token);
+  $("setup").style.display = "none";
+  $("app").style.display = "block";
+  say(silent ? "" : "ok", silent ? "" : "Connected.");
+  buildForm();
+  defaultDates();
+  renderWeekList();
+}
+
+$("connect").addEventListener("click", () => connect(false));
+$("signout").addEventListener("click", () => {
+  localStorage.removeItem("pc_token");
+  location.reload();
+});
+
+/* ---------- form ---------- */
+function buildForm(week) {
+  const players = (DATA && DATA.players) || DEFAULT_PLAYERS;
+  $("entries").innerHTML = players.map(p => {
+    const e = (week && week.entries[p]) || {};
+    return `<div class="entry-row" data-player="${esc(p)}">
+      <div class="entry-name">${esc(p)}</div>
+      ${LEAGUES.map(lg => {
+        const leg = e[lg.key] || {};
+        return `<div class="leg">
+          <span class="leg-tag">${lg.label}</span>
+          <span class="wl" data-league="${lg.key}">
+            <button type="button" data-v="W" class="${leg.result === "W" ? "on-w" : ""}">W</button>
+            <button type="button" data-v="L" class="${leg.result === "L" ? "on-l" : ""}">L</button>
+          </span>
+          <span class="pickwrap"><input type="text" class="pick" data-league="${lg.key}"
+            placeholder="${lg.full} pick (optional)" value="${esc(leg.pick || "")}"></span>
+        </div>`;
+      }).join("")}
+    </div>`;
+  }).join("");
+
+  $("entries").querySelectorAll(".wl button").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const group = btn.parentNode;
+      const v = btn.dataset.v;
+      const already = btn.classList.contains("on-w") || btn.classList.contains("on-l");
+      group.querySelectorAll("button").forEach(b => b.classList.remove("on-w", "on-l"));
+      if (!already) btn.classList.add(v === "W" ? "on-w" : "on-l");
+    });
+  });
+}
+
+function readForm() {
+  const entries = {};
+  let marked = 0;
+  $("entries").querySelectorAll(".entry-row").forEach(row => {
+    const player = row.dataset.player;
+    const obj = {};
+    LEAGUES.forEach(lg => {
+      const wl = row.querySelector(`.wl[data-league="${lg.key}"]`);
+      const on = wl.querySelector(".on-w, .on-l");
+      const result = on ? on.dataset.v : null;
+      const pick = row.querySelector(`.pick[data-league="${lg.key}"]`).value.trim();
+      if (result) marked++;
+      obj[lg.key] = { result: result, pick: pick };
+    });
+    entries[player] = obj;
+  });
+  return { entries, marked };
+}
+
+function defaultDates() {
+  const now = new Date();
+  const day = now.getDay(); // 0 Sun ... 6 Sat
+  const back = (day + 1) % 7; // days since most recent Saturday
+  const sat = new Date(now.getFullYear(), now.getMonth(), now.getDate() - back);
+  const sun = new Date(sat.getFullYear(), sat.getMonth(), sat.getDate() + 1);
+  $("start").value = iso(sat);
+  $("end").value = iso(sun);
+  syncLabel();
+}
+
+function iso(d) {
+  return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
+}
+
+let labelTouched = false;
+function syncLabel() {
+  if (labelTouched) return;
+  const l = weekendLabel($("start").value, $("end").value);
+  if (l) $("label").value = l;
+}
+$("start").addEventListener("change", syncLabel);
+$("end").addEventListener("change", syncLabel);
+$("label").addEventListener("input", () => { labelTouched = true; });
+
+/* ---------- save ---------- */
+$("save").addEventListener("click", async () => {
+  const start = $("start").value;
+  const label = $("label").value.trim() || weekendLabel(start, $("end").value) || "Untitled week";
+  if (!start) { say("err", "Pick a start date."); return; }
+  const { entries, marked } = readForm();
+  if (marked === 0) { say("err", "Nothing marked. Tap W or L for at least one pick."); return; }
+
+  const id = EDITING || start;
+  const week = { id, label, start, end: $("end").value, entries };
+
+  $("save").disabled = true;
+  say("info", "Saving to GitHub...");
+  try {
+    DATA = await fetchFile(); // refresh so we never clobber someone else
+    const i = DATA.weeks.findIndex(w => w.id === id);
+    if (i >= 0) DATA.weeks[i] = week; else DATA.weeks.push(week);
+    DATA.weeks.sort((a, b) => String(a.start || a.id).localeCompare(String(b.start || b.id)));
+    await commitFile(DATA, (i >= 0 ? "Update " : "Add ") + label);
+    say("ok", (i >= 0 ? "Updated " : "Saved ") + label + ". Dashboard refreshes within a minute or two.");
+    EDITING = null;
+    $("editorTitle").textContent = "Add a week";
+    $("cancelEdit").style.display = "none";
+    labelTouched = false;
+    buildForm();
+    defaultDates();
+    renderWeekList();
+  } catch (e) {
+    say("err", e.message);
+  } finally {
+    $("save").disabled = false;
+  }
+});
+
+$("clear").addEventListener("click", () => {
+  EDITING = null;
+  labelTouched = false;
+  $("editorTitle").textContent = "Add a week";
+  $("cancelEdit").style.display = "none";
+  buildForm();
+  defaultDates();
+  say("");
+});
+
+$("cancelEdit").addEventListener("click", () => $("clear").click());
+
+/* ---------- week list ---------- */
+function renderWeekList() {
+  const el = $("weeklist");
+  if (!DATA.weeks.length) {
+    el.innerHTML = '<div class="empty">No weeks yet.</div>';
+    return;
+  }
+  el.innerHTML = DATA.weeks.slice().reverse().map(w => {
+    let win = 0, loss = 0;
+    DATA.players.forEach(p => LEAGUES.forEach(lg => {
+      const r = ((w.entries[p] || {})[lg.key] || {}).result;
+      if (r === "W") win++; else if (r === "L") loss++;
+    }));
+    return `<div class="weeklist-row">
+      <div>
+        <div class="pname">${esc(w.label)}</div>
+        <div class="pickline">${win}-${loss} group record</div>
+      </div>
+      <div style="display:flex;gap:8px">
+        <button class="btn small" data-edit="${esc(w.id)}">Edit</button>
+        <button class="btn small danger" data-del="${esc(w.id)}">Delete</button>
+      </div>
+    </div>`;
+  }).join("");
+
+  el.querySelectorAll("[data-edit]").forEach(b => b.addEventListener("click", () => editWeek(b.dataset.edit)));
+  el.querySelectorAll("[data-del]").forEach(b => b.addEventListener("click", () => deleteWeek(b.dataset.del)));
+}
+
+function editWeek(id) {
+  const w = DATA.weeks.find(x => x.id === id);
+  if (!w) return;
+  EDITING = id;
+  labelTouched = true;
+  $("editorTitle").textContent = "Editing: " + w.label;
+  $("cancelEdit").style.display = "inline-flex";
+  $("start").value = w.start || "";
+  $("end").value = w.end || "";
+  $("label").value = w.label || "";
+  buildForm(w);
+  window.scrollTo({ top: 0, behavior: "smooth" });
+  say("info", "Editing " + w.label + ". Saving overwrites that week.");
+}
+
+async function deleteWeek(id) {
+  const w = DATA.weeks.find(x => x.id === id);
+  if (!w) return;
+  if (!confirm('Delete "' + w.label + '"? This removes it from the dashboard.')) return;
+  say("info", "Deleting...");
+  try {
+    DATA = await fetchFile();
+    DATA.weeks = DATA.weeks.filter(x => x.id !== id);
+    await commitFile(DATA, "Delete " + w.label);
+    if (EDITING === id) $("clear").click();
+    say("ok", "Deleted " + w.label + ".");
+    renderWeekList();
+  } catch (e) {
+    say("err", e.message);
+  }
+}
+
+loadSession();
+</script>
+</body>
+</html>
