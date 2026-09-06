@@ -97,8 +97,13 @@ function render() {
      </div>`;
 
   $("secTitle").textContent = key === "cfb" ? "College Football" : "NFL";
+
   const hot = rows.filter(r => r.streak[key] >= 2).length;
-  $("secNote").textContent = hot ? hot + " on a streak" : "";
+  const pend = STATS.pending[key];
+  $("secNote").textContent = [
+    hot ? hot + " on a streak" : "",
+    pend ? pend + " pending" : ""
+  ].filter(Boolean).join(" · ");
 
   $("rows").innerHTML = rows.map((r, i) => {
     const rc = r[key];
@@ -151,8 +156,8 @@ function renderHistory(key, name) {
     const s = sums[e.id] || { w: 0, l: 0 };
     const body = DATA.players.map(p => {
       const v = e.picks[p] || {};
-      const cls = v.result === "W" ? "w" : v.result === "L" ? "l" : "none";
-      const mark = v.result || "-";
+      const cls = v.result === "W" ? "w" : v.result === "L" ? "l" : v.result === "P" ? "p" : "none";
+      const mark = v.result === "P" ? "P" : (v.result || "-");
       const pick = v.pick
         ? `<span class="wl-pick">${esc(v.pick)}</span>`
         : `<span class="wl-pick blank">no pick logged</span>`;
@@ -162,7 +167,7 @@ function renderHistory(key, name) {
     return `<div class="wk${idx === 0 ? " open" : ""}">
       <div class="wk-head" onclick="this.parentNode.classList.toggle('open')">
         <span class="wk-t">${esc(e.label)}</span>
-        <span class="wk-m">${s.counted && s.perfect ? '<span class="sweep">SWEEP</span>' : ""}${s.w}-${s.l}<span class="chev">&#9654;</span></span>
+        <span class="wk-m">${s.counted && s.perfect ? '<span class="sweep">SWEEP</span>' : ""}${s.pending ? `<span class="pend-chip">${s.pending} PENDING</span>` : ""}${s.w}-${s.l}<span class="chev">&#9654;</span></span>
       </div>
       <div class="wk-body">${body}</div>
     </div>`;
