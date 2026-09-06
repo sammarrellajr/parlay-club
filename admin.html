@@ -48,8 +48,8 @@
   <div id="app" style="display:none">
 
     <div class="card">
-      <h2 id="editorTitle">Add a week</h2>
-      <p class="sub" id="editorSub">Set the dates, tap W or L for each pick, then save.</p>
+      <h2 id="editorTitle">Add an entry</h2>
+      <p class="sub" id="editorSub">Set the dates, tap W or L for each pick, then save. You can log more than one entry per weekend.</p>
 
       <div class="grid-form" style="margin-bottom:18px">
         <div class="row2">
@@ -59,22 +59,22 @@
         <div>
           <label class="fl" for="label">Week label</label>
           <input type="text" id="label" placeholder="9/5-9/6 Weekend">
-          <div class="hint">Auto-fills from the dates. Type over it for bowl week, playoffs, whatever.</div>
+          <div class="hint">Auto-fills from the dates, and adds #2 if that date already has an entry. Type over it for bowl week, playoffs, whatever.</div>
         </div>
       </div>
 
       <div id="entries"></div>
 
       <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:6px">
-        <button class="btn primary" id="save">Save week</button>
+        <button class="btn primary" id="save">Save entry</button>
         <button class="btn ghost" id="clear">Clear form</button>
         <button class="btn ghost" id="cancelEdit" style="display:none">Cancel edit</button>
       </div>
     </div>
 
     <div class="card">
-      <h2>Logged weeks</h2>
-      <p class="sub">Newest first. Edit reloads the week into the form above.</p>
+      <h2>Logged entries</h2>
+      <p class="sub">Newest first. Edit reloads that entry into the form above.</p>
       <div id="weeklist"></div>
     </div>
   </div>
@@ -87,7 +87,7 @@
 let STATE = { owner: "", repo: "", branch: "main", token: "" };
 let DATA = null;
 let SHA = null;
-let EDITING = null; // week id being edited
+let EDITING = null; // entry id being edited
 
 const $ = id => document.getElementById(id);
 
@@ -270,11 +270,31 @@ function iso(d) {
   return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
 }
 
+/* Entries already logged for this date, ignoring the one being edited. */
+function existingForStart(start) {
+  if (!DATA || !start) return [];
+  return DATA.weeks.filter(w => w.start === start && w.id !== EDITING);
+}
+
+/* Second entry on a date gets " #2", third " #3", and so on. */
+function suffixFor(start) {
+  const n = existingForStart(start).length;
+  return n ? " #" + (n + 1) : "";
+}
+
+function nextIdFor(start) {
+  const taken = new Set(DATA.weeks.map(w => w.id));
+  if (!taken.has(start)) return start;
+  let n = 2;
+  while (taken.has(start + "#" + n)) n++;
+  return start + "#" + n;
+}
+
 let labelTouched = false;
 function syncLabel() {
   if (labelTouched) return;
-  const l = weekendLabel($("start").value, $("end").value);
-  if (l) $("label").value = l;
+  const base = weekendLabel($("start").value, $("end").value);
+  if (base) $("label").value = base + suffixFor($("start").value);
 }
 $("start").addEventListener("change", syncLabel);
 $("end").addEventListener("change", syncLabel);
@@ -283,10 +303,19 @@ $("label").addEventListener("input", () => { labelTouched = true; });
 /* ---------- save ---------- */
 $("save").addEventListener("click", async () => {
   const start = $("start").value;
-  const label = $("label").value.trim() || weekendLabel(start, $("end").value) || "Untitled week";
   if (!start) { say("err", "Pick a start date."); return; }
   const { entries, marked, missing } = readForm();
   if (marked === 0) { say("err", "Nothing marked. Tap W or L for at least one pick."); return; }
+
+  const dupes = existingForStart(start);
+  if (!EDITING && dupes.length) {
+    const ok = confirm("That date already has " + dupes.length + " entr" + (dupes.length === 1 ? "y" : "ies") +
+      ":\n\n" + dupes.map(w => w.label).join("\n") +
+      "\n\nSave this as a separate entry #" + (dupes.length + 1) + "?" +
+      "\n\nTo correct the existing one instead, cancel and use Edit below.");
+    if (!ok) return;
+  }
+
   if (missing.length) {
     const ok = confirm(missing.length + " pick" + (missing.length === 1 ? " is" : "s are") +
       " still blank:\n\n" + missing.join("\n") +
@@ -294,20 +323,23 @@ $("save").addEventListener("click", async () => {
     if (!ok) return;
   }
 
-  const id = EDITING || start;
-  const week = { id, label, start, end: $("end").value, entries };
-
   $("save").disabled = true;
   say("info", "Saving to GitHub...");
   try {
     DATA = await fetchFile(); // refresh so we never clobber someone else
+    // Resolve the id against the freshest data, not what was on screen.
+    const id = EDITING || nextIdFor(start);
+    const label = $("label").value.trim() ||
+      (weekendLabel(start, $("end").value) + suffixFor(start)) ||
+      "Untitled entry";
+    const week = { id, label, start, end: $("end").value, entries };
     const i = DATA.weeks.findIndex(w => w.id === id);
     if (i >= 0) DATA.weeks[i] = week; else DATA.weeks.push(week);
     DATA.weeks.sort((a, b) => String(a.start || a.id).localeCompare(String(b.start || b.id)));
     await commitFile(DATA, (i >= 0 ? "Update " : "Add ") + label);
     say("ok", (i >= 0 ? "Updated " : "Saved ") + label + ". Dashboard refreshes within a minute or two.");
     EDITING = null;
-    $("editorTitle").textContent = "Add a week";
+    $("editorTitle").textContent = "Add an entry";
     $("cancelEdit").style.display = "none";
     labelTouched = false;
     buildForm();
@@ -323,7 +355,7 @@ $("save").addEventListener("click", async () => {
 $("clear").addEventListener("click", () => {
   EDITING = null;
   labelTouched = false;
-  $("editorTitle").textContent = "Add a week";
+  $("editorTitle").textContent = "Add an entry";
   $("cancelEdit").style.display = "none";
   buildForm();
   defaultDates();
@@ -332,11 +364,11 @@ $("clear").addEventListener("click", () => {
 
 $("cancelEdit").addEventListener("click", () => $("clear").click());
 
-/* ---------- week list ---------- */
+/* ---------- entry list ---------- */
 function renderWeekList() {
   const el = $("weeklist");
   if (!DATA.weeks.length) {
-    el.innerHTML = '<div class="empty">No weeks yet.</div>';
+    el.innerHTML = '<div class="empty">No entries yet.</div>';
     return;
   }
   el.innerHTML = DATA.weeks.slice().reverse().map(w => {
@@ -373,7 +405,7 @@ function editWeek(id) {
   $("label").value = w.label || "";
   buildForm(w);
   window.scrollTo({ top: 0, behavior: "smooth" });
-  say("info", "Editing " + w.label + ". Saving overwrites that week.");
+  say("info", "Editing " + w.label + ". Saving overwrites that entry.");
 }
 
 async function deleteWeek(id) {
