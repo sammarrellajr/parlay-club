@@ -269,6 +269,87 @@ function pctClass(v, rec) {
   return "even";
 }
 
+/* ---------- pick entry helpers ---------- */
+
+/* Short names as they appear on a bet slip. */
+const TEAMS = [
+  // NFL
+  "49ers","Bears","Bengals","Bills","Broncos","Browns","Buccaneers","Cardinals","Chargers",
+  "Chiefs","Colts","Commanders","Cowboys","Dolphins","Eagles","Falcons","Giants","Jaguars",
+  "Jets","Lions","Packers","Panthers","Patriots","Raiders","Rams","Ravens","Saints","Seahawks",
+  "Steelers","Texans","Titans","Vikings",
+  // College
+  "Air Force","Alabama","App State","Arizona","Arizona State","Arkansas","Army","Auburn",
+  "Baylor","Boise State","Boston College","BYU","California","Cincinnati","Clemson","Colorado",
+  "Colorado State","Duke","East Carolina","Florida","Florida State","Fresno State","Georgia",
+  "Georgia Tech","Houston","Illinois","Indiana","Iowa","Iowa State","James Madison","Kansas",
+  "Kansas State","Kentucky","Liberty","Louisville","LSU","Marshall","Maryland","Memphis","Miami",
+  "Michigan","Michigan State","Minnesota","Mississippi State","Missouri","Navy","NC State",
+  "Nebraska","Nevada","New Mexico","North Carolina","Northwestern","Notre Dame","Ohio State",
+  "Oklahoma","Oklahoma State","Ole Miss","Oregon","Oregon State","Penn State","Pittsburgh",
+  "Purdue","Rutgers","San Diego State","San Jose State","SMU","South Carolina","South Florida",
+  "Stanford","Syracuse","TCU","Temple","Tennessee","Texas","Texas A&M","Texas Tech","Toledo",
+  "Tulane","UCF","UCLA","UNLV","USC","Utah","Utah State","UTSA","Vanderbilt","Virginia",
+  "Virginia Tech","Wake Forest","Washington","Washington State","West Virginia","Western Kentucky",
+  "Wisconsin","Wyoming",
+  // common non-team openers
+  "Over","Under"
+];
+
+/* Everything typed before, newest first, so repeats surface fast. */
+function priorPicks(data) {
+  const seen = new Set();
+  const out = [];
+  data.entries.slice().reverse().forEach(e => {
+    data.players.forEach(p => {
+      const t = ((e.picks[p] || {}).pick || "").trim();
+      if (t && !seen.has(t.toLowerCase())) { seen.add(t.toLowerCase()); out.push(t); }
+    });
+  });
+  return out;
+}
+
+/* Prior picks first (whole strings), then team names. */
+function suggestPicks(query, data, limit) {
+  const q = query.trim().toLowerCase();
+  if (!q) return [];
+  const hits = [];
+  const push = v => {
+    if (v.toLowerCase() === q) return;                 // already typed exactly
+    if (!hits.some(h => h.toLowerCase() === v.toLowerCase())) hits.push(v);
+  };
+  const starts = v => v.toLowerCase().startsWith(q);
+  const has = v => v.toLowerCase().includes(q);
+
+  const prior = data ? priorPicks(data) : [];
+  prior.filter(starts).forEach(push);
+  TEAMS.filter(starts).forEach(push);
+  prior.filter(v => !starts(v) && has(v)).forEach(push);
+  TEAMS.filter(v => !starts(v) && has(v)).forEach(push);
+  return hits.slice(0, limit || 6);
+}
+
+/* Split a pasted slip into individual picks.
+   Prefers line breaks; falls back to commas when it is all one line. */
+const PASTE_NOISE = /^(spread|total|totals|moneyline|money line|ml|parlay|parlay boost ineligible|open|pending|won|lost|boost applied.*)$/i;
+
+function parsePastedPicks(text) {
+  if (!text) return [];
+  let parts = text.split(/\r?\n/).map(t => t.trim()).filter(Boolean);
+  if (parts.length < 2) parts = text.split(",").map(t => t.trim()).filter(Boolean);
+
+  return parts
+    .map(t => t
+      .replace(/^[\-•*\d]+[.)\s]+/, "")   // strip bullets and "1." numbering
+      .replace(/\s+/g, " ")
+      .trim())
+    .filter(t => t &&
+      !PASTE_NOISE.test(t) &&
+      !/^[+-]\d{3,4}$/.test(t) &&                // bare odds like -110
+      !/^@\s/.test(t) &&                         // venue lines
+      !/^\$/.test(t));
+}
+
 function esc(s) {
   return String(s == null ? "" : s)
     .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
