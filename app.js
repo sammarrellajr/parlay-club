@@ -186,6 +186,17 @@ function computeStats(data) {
     summaries.push(s);
   });
 
+  /* A parlay cashes only when every leg wins, so the entry needs a settled
+     result for all five and not one loss among them. */
+  const parlays = { cfb: 0, nfl: 0, all: 0 };
+  const settled = { cfb: 0, nfl: 0, all: 0 };
+  summaries.forEach(s => {
+    if (s.counted !== data.players.length) return;   // still pending or blank
+    settled[s.league] += 1;
+    settled.all += 1;
+    if (s.perfect) { parlays[s.league] += 1; parlays.all += 1; }
+  });
+
   const rows = data.players.map(p => {
     const s = per[p];
     return {
@@ -212,6 +223,8 @@ function computeStats(data) {
     group,
     groupPct: { cfb: pct(group.cfb), nfl: pct(group.nfl), all: pct(group.all) },
     summaries,
+    parlays,
+    settled,
     counts: {
       cfb: data.entries.filter(e => e.league === "cfb").length,
       nfl: data.entries.filter(e => e.league === "nfl").length,
