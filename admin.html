@@ -72,7 +72,7 @@
 
     <div class="card">
       <h2>Paste picks</h2>
-      <p class="cs">Paste the slip, tap Fill picks, then set who has what.</p>
+      <p class="cs">Paste the slip, tap Fill picks, then fix the text and set who has what.</p>
       <textarea id="pasteBox" rows="3" placeholder="Paste the whole slip, or one pick per line"></textarea>
       <div class="two" style="margin-top:10px">
         <button class="btn" id="fillPicks">Fill picks</button>
@@ -88,6 +88,16 @@
       <h2 id="listTitle">Logged</h2>
       <p class="cs">Newest first. Edit loads it back into the form.</p>
       <div id="list"></div>
+    </div>
+
+    <div class="card" id="acct" style="margin-top:14px">
+      <h2>This device</h2>
+      <p class="cs">Your token lives in this browser only. It is never in the repo.</p>
+      <div class="two">
+        <button class="btn" id="showTok">Show token</button>
+        <button class="btn danger" id="signOut">Sign out</button>
+      </div>
+      <div class="hint" id="tokOut">Signed in to <span id="whoRepo"></span>.</div>
     </div>
 
     <div class="savebar">
@@ -216,6 +226,7 @@ async function connect(silent) {
   $("app").style.display = "block";
   $("lgSeg").style.display = "grid";
   $("topPad").style.display = "none";
+  $("whoRepo").textContent = STATE.owner + "/" + STATE.repo;
   if (!silent) say("ok", "Connected.");
   defaultLeagueAndDate();
   buildForm();
@@ -459,7 +470,7 @@ function resetForm() {
 }
 
 /* ---------- paste ---------- */
-let PARSED = [];      // picks read out of the paste box
+let PARSED = [];      // picks read out of the paste box, editable afterwards
 let ASSIGNED = [];    // player each parsed pick belongs to, or null to skip
 
 $("fillPicks").addEventListener("click", () => {
@@ -475,7 +486,8 @@ $("fillPicks").addEventListener("click", () => {
       (guessed ? ", " + guessed + " matched from past picks." : "."));
 });
 
-/* One row per parsed pick with a name picker, so slip order does not matter. */
+/* One row per parsed pick: editable text plus a name picker, so neither the
+   slip wording nor the slip order has to be right. */
 function renderAssign() {
   const el = $("assign");
   if (!PARSED.length) { el.hidden = true; el.innerHTML = ""; return; }
@@ -483,7 +495,8 @@ function renderAssign() {
 
   el.innerHTML = PARSED.map((t, i) => `
     <div class="arow">
-      <span class="apick${ASSIGNED[i] ? "" : " skipped"}">${esc(t)}</span>
+      <input type="text" class="apick${ASSIGNED[i] ? "" : " skipped"}" data-i="${i}"
+        value="${esc(t)}" autocomplete="off" autocorrect="off" spellcheck="false">
       <select data-i="${i}">
         <option value="">Skip</option>
         ${players.map(p =>
@@ -493,6 +506,14 @@ function renderAssign() {
 
   el.hidden = false;
 
+  // Totals arrive as "Over 54.5" with no teams, so the text stays editable.
+  el.querySelectorAll("input.apick").forEach(inp => {
+    inp.addEventListener("input", () => {
+      PARSED[Number(inp.dataset.i)] = inp.value;
+      applyAssign();
+    });
+  });
+
   el.querySelectorAll("select").forEach(sel => {
     sel.addEventListener("change", () => {
       const i = Number(sel.dataset.i);
@@ -500,12 +521,12 @@ function renderAssign() {
       // one pick per person: whoever held this name loses it
       if (val) ASSIGNED = ASSIGNED.map((p, j) => (j !== i && p === val ? null : p));
       ASSIGNED[i] = val;
-      renderAssign();
+      renderAssign();   // a name moving can free another row, so redraw
       applyAssign();
     });
   });
 
-  $("pasteHint").textContent = "Tap a name to move a pick. Everyone can hold one.";
+  $("pasteHint").textContent = "Edit any pick to add the teams. Change a name to move it.";
 }
 
 /* Push the current assignment into the per-player fields. */
@@ -613,6 +634,28 @@ async function deleteEntry(id) {
     say("err", err.message);
   }
 }
+
+/* ---------- this device ---------- */
+$("showTok").addEventListener("click", () => {
+  const el = $("tokOut");
+  const shown = el.dataset.shown === "1";
+  if (shown) {
+    el.textContent = "Signed in to " + STATE.owner + "/" + STATE.repo + ".";
+    el.dataset.shown = "0";
+    $("showTok").textContent = "Show token";
+  } else {
+    el.textContent = STATE.token || "No token stored.";
+    el.style.wordBreak = "break-all";
+    el.dataset.shown = "1";
+    $("showTok").textContent = "Hide token";
+  }
+});
+
+$("signOut").addEventListener("click", () => {
+  if (!confirm("Sign out of this device?\n\nYou will need to paste the token again to save results.")) return;
+  localStorage.removeItem("pc_token");
+  location.reload();
+});
 
 loadSession();
 </script>
