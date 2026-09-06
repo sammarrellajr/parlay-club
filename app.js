@@ -338,20 +338,41 @@ function suggestPicks(query, data, limit) {
    like a pick: they contain letters, and they are not a label or a place. */
 const PASTE_NOISE = /^(spread|total|totals|moneyline|money line|straight|parlay|same game parlay|sgp|parlay boost ineligible|boost applied.*|open|pending|live|won|win|lost|loss|push|void|cashed out|cash out|to win|to pay|wager|bet slip|\d+ pick parlay)$/i;
 
-const VENUE = /^@|^[A-Za-z .'&-]+,\s*[A-Z]{2}\.?$/;   // "@", "@ Atlanta, GA", "Atlanta, GA"
+const VENUE_LINE = /^@?\s*([A-Za-z .'&-]+),\s*[A-Z]{2}\.?$/;   // "Atlanta, GA" or "@ Atlanta, GA"
+
+/* A total ("Over 54.5") carries no team name. The slip usually prints the
+   venue right after it, so borrow the city rather than discarding it. */
+function venueCity(line) {
+  const m = line.match(VENUE_LINE);
+  return m ? m[1].trim() : "";
+}
 
 function parsePastedPicks(text) {
   if (!text) return [];
   let parts = text.split(/\r?\n/).map(t => t.trim()).filter(Boolean);
   if (parts.length < 2) parts = text.split(",").map(t => t.trim()).filter(Boolean);
 
-  return parts
-    .map(cleanPickLine)
-    .filter(t =>
-      t &&
-      /[a-z]/i.test(t) &&              // a pick always has letters; "@" and "-110" do not
-      !PASTE_NOISE.test(t) &&
-      !VENUE.test(t));
+  const out = [];
+  parts.forEach(raw => {
+    const t = cleanPickLine(raw);
+    if (!t) return;
+    if (t === "@") return;                       // venue marker on its own line
+
+    const city = venueCity(t);
+    if (city) {
+      const last = out[out.length - 1];
+      if (last && /^(over|under)\b/i.test(last) && !/\(/.test(last)) {
+        out[out.length - 1] = last + " (" + city + ")";
+      }
+      return;
+    }
+
+    if (!/[a-z]/i.test(t)) return;               // "-110" and other bare numbers
+    if (PASTE_NOISE.test(t)) return;
+    out.push(t);
+  });
+
+  return out;
 }
 
 function cleanPickLine(t) {
@@ -360,7 +381,6 @@ function cleanPickLine(t) {
     .replace(/^\d+[.)]\s+/, "")             // "1." numbering
     .replace(/\s+/g, " ")
     .replace(/([+-])\s+(?=[\d.])/g, "$1")   // "Pittsburgh - 16.5" -> "Pittsburgh -16.5"
-    .replace(/\s+([ou])\s*(?=[\d.])/i, " $1")
     .trim();
 }
 
