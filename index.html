@@ -60,7 +60,16 @@ let LG = "cfb";
 
 const $ = id => document.getElementById(id);
 
-async function boot() {
+let LAST_SIG = "";
+
+function stamp() {
+  return new Date().toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+}
+
+/* quiet = no button state change, for the automatic refresh on reopen. */
+async function boot(quiet) {
+  const btn = $("refresh");
+  if (!quiet) { btn.disabled = true; btn.textContent = "..."; }
   $("err").classList.remove("show");
   try {
     DATA = await loadResults();
@@ -68,12 +77,32 @@ async function boot() {
     $("err").textContent = "Could not load results.json. " + e.message;
     $("err").classList.add("show");
     return;
+  } finally {
+    btn.disabled = false;
+    btn.textContent = "Refresh";
   }
+
+  // Two refreshes in the same minute leave the timestamp identical, so the
+  // button itself confirms the tap landed.
+  if (!quiet) {
+    btn.textContent = "Updated";
+    clearTimeout(boot.reset);
+    boot.reset = setTimeout(() => { btn.textContent = "Refresh"; }, 1400);
+  }
+
+  // Nothing on screen moves when the results are unchanged, so say so.
+  const sig = JSON.stringify(DATA.entries);
+  const changed = LAST_SIG && sig !== LAST_SIG;
+  LAST_SIG = sig;
+
   STATS = computeStats(DATA);
   $("season").textContent = DATA.season ? DATA.season + " Season" : "";
   render();
-  $("foot").textContent = "Live from results.json";
+  $("foot").textContent = "Updated " + stamp() + (changed ? " · new results" : "");
 }
+
+// Coming back to the app from the Home Screen should show current numbers.
+document.addEventListener("visibilitychange", () => { if (!document.hidden) boot(true); });
 
 function render() {
   const key = LG;
@@ -97,7 +126,6 @@ function render() {
      </div>`;
 
   $("secTitle").textContent = key === "cfb" ? "College Football" : "NFL";
-
   const hot = rows.filter(r => r.streak[key] >= 2).length;
   const pend = STATS.pending[key];
   $("secNote").textContent = [
@@ -182,7 +210,7 @@ $("seg").addEventListener("click", e => {
   if (STATS) render();
 });
 
-$("refresh").addEventListener("click", boot);
+$("refresh").addEventListener("click", () => boot());
 boot();
 </script>
 </body>
