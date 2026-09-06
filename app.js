@@ -437,3 +437,242 @@ function esc(s) {
     .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;").replace(/'/g, "&#39;");
 }
+
+/* ---------- weekends ---------- */
+
+/* A football week runs Thursday to Monday, so every entry maps back to the
+   Saturday of its weekend. Tue and Wed fall to the weekend just finished. */
+const SAT_OFFSET = [-1, -2, -3, -4, 2, 1, 0];   // indexed by getDay()
+
+const MON = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+function parseISO(s) {
+  const [y, m, d] = String(s || "").split("-").map(Number);
+  return (y && m && d) ? new Date(y, m - 1, d) : null;
+}
+
+function isoOf(d) {
+  return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") +
+         "-" + String(d.getDate()).padStart(2, "0");
+}
+
+function weekendKey(iso) {
+  const d = parseISO(iso);
+  if (!d) return iso || "";
+  d.setDate(d.getDate() + SAT_OFFSET[d.getDay()]);
+  return isoOf(d);
+}
+
+/* "Sep 5-6", or a single date when only one slate was played. */
+function weekendLabel(entries) {
+  const dates = [...new Set(entries.map(e => e.date))].filter(Boolean).sort();
+  if (!dates.length) return "";
+  const a = parseISO(dates[0]);
+  const b = parseISO(dates[dates.length - 1]);
+  if (!a) return dates[0];
+  const head = MON[a.getMonth()] + " " + a.getDate();
+  if (!b || dates.length === 1) return head;
+  if (a.getMonth() === b.getMonth() && a.getDate() === b.getDate()) return head;
+  return a.getMonth() === b.getMonth()
+    ? head + "-" + b.getDate()
+    : head + " - " + MON[b.getMonth()] + " " + b.getDate();
+}
+
+/* Every weekend holding entries, newest first. */
+function weekends(data) {
+  const map = {};
+  data.entries.forEach(e => {
+    const k = weekendKey(e.date);
+    (map[k] = map[k] || []).push(e);
+  });
+  return Object.keys(map).sort().reverse().map(k => ({
+    key: k,
+    entries: map[k],
+    label: weekendLabel(map[k])
+  }));
+}
+
+/* What one player did in one league over one weekend. Two slates in the same
+   league collapse to a record ("2-0") rather than a single letter. */
+function weekendCell(entries, league, player) {
+  const list = entries.filter(e => e.league === league);
+  if (!list.length) return { kind: "none", text: "—" };
+
+  let w = 0, l = 0, p = 0;
+  list.forEach(e => {
+    const r = (e.picks[player] || {}).result;
+    if (r === "W") w++; else if (r === "L") l++; else if (r === "P") p++;
+  });
+  if (!w && !l && !p) return { kind: "none", text: "—" };
+
+  if (w + l + p === 1) {
+    if (p) return { kind: "P", text: "PEND" };
+    return w ? { kind: "W", text: "W" } : { kind: "L", text: "L" };
+  }
+  return {
+    kind: w > l ? "W" : l > w ? "L" : "even",
+    text: w + "-" + l + (p ? " +" + p + "P" : "")
+  };
+}
+
+/* Season to date, both leagues together. */
+function overallRec(data, player) {
+  const rec = blankRec();
+  data.entries.forEach(e => {
+    const r = (e.picks[player] || {}).result;
+    if (r === "W") rec.w++; else if (r === "L") rec.l++;
+  });
+  return rec;
+}
+
+/* ---------- share card ---------- */
+
+const CARD = {
+  w: 1080, pad: 60, rowH: 92, headH: 62, nameW: 296,
+  bg: "#0a0d12", panel: "#151b25", line: "#232c3a",
+  text: "#eef2f8", muted: "#8794a8", dim: "#5c6779",
+  win: "#32d977", winBg: "#12341f",
+  loss: "#ff5c45", lossBg: "#351511",
+  gold: "#ffc94d", goldBg: "#3a2d0a"
+};
+
+const CARD_FONT = '-apple-system, "SF Pro Text", "Helvetica Neue", Helvetica, Arial, sans-serif';
+
+function cardFont(weight, size) {
+  return weight + " " + size + "px " + CARD_FONT;
+}
+
+function roundRect(ctx, x, y, w, h, r) {
+  ctx.beginPath();
+  if (ctx.roundRect) { ctx.roundRect(x, y, w, h, r); return; }
+  ctx.moveTo(x + r, y);
+  ctx.arcTo(x + w, y, x + w, y + h, r);
+  ctx.arcTo(x + w, y + h, x, y + h, r);
+  ctx.arcTo(x, y + h, x, y, r);
+  ctx.arcTo(x, y, x + w, y, r);
+  ctx.closePath();
+}
+
+function cellColors(kind) {
+  if (kind === "W") return [CARD.winBg, CARD.win];
+  if (kind === "L") return [CARD.lossBg, CARD.loss];
+  if (kind === "P") return [CARD.goldBg, CARD.gold];
+  if (kind === "even") return ["#222b39", CARD.muted];
+  return [null, CARD.dim];
+}
+
+/* A PNG of one weekend: both slates per player, plus the season record. */
+function buildShareCard(data, weekend, siteUrl) {
+  const C = CARD;
+  const rows = data.players.map(p => ({
+    name: p,
+    cfb: weekendCell(weekend.entries, "cfb", p),
+    nfl: weekendCell(weekend.entries, "nfl", p),
+    all: overallRec(data, p)
+  }));
+
+  let gw = 0, gl = 0, gp = 0;
+  weekend.entries.forEach(e => data.players.forEach(p => {
+    const r = (e.picks[p] || {}).result;
+    if (r === "W") gw++; else if (r === "L") gl++; else if (r === "P") gp++;
+  }));
+
+  const tableY = C.pad + 168;
+  const tableH = C.headH + rows.length * C.rowH;
+  const footY = tableY + tableH + 52;
+  const height = footY + 40 + C.pad;
+
+  const cv = document.createElement("canvas");
+  cv.width = C.w;
+  cv.height = height;
+  const ctx = cv.getContext("2d");
+
+  ctx.fillStyle = C.bg;
+  ctx.fillRect(0, 0, C.w, height);
+  ctx.textBaseline = "middle";
+
+  // header
+  ctx.textAlign = "left";
+  ctx.fillStyle = C.text;
+  ctx.font = cardFont(700, 54);
+  ctx.fillText("Parlay Club", C.pad, C.pad + 36);
+  ctx.fillStyle = C.muted;
+  ctx.font = cardFont(500, 34);
+  ctx.fillText(weekend.label, C.pad, C.pad + 92);
+
+  ctx.textAlign = "right";
+  ctx.fillStyle = C.dim;
+  ctx.font = cardFont(600, 22);
+  ctx.fillText("THIS WEEKEND", C.w - C.pad, C.pad + 26);
+  ctx.fillStyle = gw > gl ? C.win : gl > gw ? C.loss : C.text;
+  ctx.font = cardFont(700, 52);
+  ctx.fillText(gw + "-" + gl, C.w - C.pad, C.pad + 74);
+  if (gp) {
+    ctx.fillStyle = C.gold;
+    ctx.font = cardFont(600, 24);
+    ctx.fillText(gp + " still pending", C.w - C.pad, C.pad + 122);
+  }
+
+  // table shell
+  const tx = C.pad, tw = C.w - C.pad * 2;
+  ctx.fillStyle = C.panel;
+  roundRect(ctx, tx, tableY, tw, tableH, 24);
+  ctx.fill();
+
+  const colW = (tw - C.nameW) / 3;
+  const colMid = i => tx + C.nameW + colW * i + colW / 2;
+
+  // column headings
+  ctx.textAlign = "center";
+  ctx.fillStyle = C.dim;
+  ctx.font = cardFont(600, 22);
+  ["COLLEGE", "NFL", "OVERALL"].forEach((h, i) =>
+    ctx.fillText(h, colMid(i), tableY + C.headH / 2 + 1));
+
+  ctx.fillStyle = C.line;
+  ctx.fillRect(tx, tableY + C.headH, tw, 1);
+
+  rows.forEach((r, i) => {
+    const y = tableY + C.headH + i * C.rowH;
+    const mid = y + C.rowH / 2;
+    if (i) ctx.fillStyle = C.line, ctx.fillRect(tx + 28, y, tw - 56, 1);
+
+    ctx.textAlign = "left";
+    ctx.fillStyle = C.text;
+    ctx.font = cardFont(600, 38);
+    ctx.fillText(r.name, tx + 34, mid);
+
+    [r.cfb, r.nfl].forEach((cell, k) => {
+      const [bg, fg] = cellColors(cell.kind);
+      const cx = colMid(k);
+      if (bg) {
+        const pw = cell.text.length > 2 ? 132 : 84;
+        ctx.fillStyle = bg;
+        roundRect(ctx, cx - pw / 2, mid - 26, pw, 52, 14);
+        ctx.fill();
+      }
+      ctx.textAlign = "center";
+      ctx.fillStyle = fg;
+      ctx.font = cardFont(700, cell.text.length > 2 ? 26 : 32);
+      ctx.fillText(cell.text, cx, mid + 1);
+    });
+
+    const played = r.all.w + r.all.l;
+    ctx.textAlign = "center";
+    ctx.fillStyle = !played ? C.dim : r.all.w > r.all.l ? C.win : r.all.w < r.all.l ? C.loss : C.text;
+    ctx.font = cardFont(700, 36);
+    ctx.fillText(played ? r.all.w + "-" + r.all.l : "—", colMid(2), mid);
+  });
+
+  // footer
+  ctx.textAlign = "left";
+  ctx.fillStyle = C.dim;
+  ctx.font = cardFont(500, 26);
+  ctx.fillText(String(siteUrl || "").replace(/^https?:\/\//, "").replace(/\/$/, ""), C.pad, footY);
+  if (data.season) {
+    ctx.textAlign = "right";
+    ctx.fillText(data.season + " season", C.w - C.pad, footY);
+  }
+
+  return cv;
+}
