@@ -65,7 +65,9 @@
     <div class="card">
       <h2 id="editorTitle">New entry</h2>
       <p class="cs" id="editorSub">Pick the date, then tap W, L or Pending for each guy.</p>
-      <label class="fl" for="date">Date</label>
+      <label class="fl" for="pickEntry">Working on</label>
+      <select id="pickEntry"></select>
+      <label class="fl" for="date" style="margin-top:11px">Date</label>
       <input type="date" id="date">
       <div class="hint" id="dateHint"></div>
     </div>
@@ -434,7 +436,7 @@ $("save").addEventListener("click", async () => {
       (LG === "cfb" ? "college" : "NFL") + " entr" + (dupes.length === 1 ? "y" : "ies") +
       ":\n\n" + dupes.map(e => e.label).join("\n") +
       "\n\nSave this as a separate entry #" + (dupes.length + 1) + "?" +
-      "\n\nTo correct the existing one, cancel and use Edit below.");
+      "\n\nTo correct the existing one, cancel and use Working on above.");
     if (!ok) return;
   }
 
@@ -471,6 +473,7 @@ function resetForm() {
   $("editorTitle").textContent = "New entry";
   $("secondary").style.display = "none";
   $("save").textContent = "Save entry";
+  $("pickEntry").value = "";
   defaultLeagueAndDate();
   buildForm();
   $("pasteBox").value = "";
@@ -563,6 +566,7 @@ function renderList() {
   if (!list.length) {
     el.innerHTML = '<div class="hint">Nothing logged yet.</div>';
     renderQueue();
+    renderPicker();
     renderShare();
     return;
   }
@@ -588,8 +592,33 @@ function renderList() {
   el.querySelectorAll("[data-del]").forEach(b => b.addEventListener("click", () => deleteEntry(b.dataset.del)));
 
   renderQueue();
+  renderPicker();
   renderShare();
 }
+
+/* Every entry from both leagues, newest first. The Logged list below is
+   filtered by the league toggle; this is not, so a mistake in either league
+   loads back without flipping the toggle first. */
+function renderPicker() {
+  const sel = $("pickEntry");
+  sel.innerHTML = '<option value="">New entry</option>' +
+    DATA.entries.slice().reverse().map(e => {
+      let w = 0, l = 0, p = 0;
+      DATA.players.forEach(n => {
+        const r = (e.picks[n] || {}).result;
+        if (r === "W") w++; else if (r === "L") l++; else if (r === "P") p++;
+      });
+      const tail = w + "-" + l + (p ? ", " + p + " pending" : "");
+      return `<option value="${esc(e.id)}">${esc(e.label)} &middot; ${tail}</option>`;
+    }).join("");
+  sel.value = EDITING || "";
+}
+
+$("pickEntry").addEventListener("change", () => {
+  const id = $("pickEntry").value;
+  if (!id) { resetForm(); renderList(); say(""); return; }
+  editEntry(id);
+});
 
 /* Anything still carrying a pending pick, across both leagues. */
 function renderQueue() {
@@ -628,6 +657,7 @@ function editEntry(id) {
   $("save").textContent = "Update entry";
   buildForm(e);
   updateDateHint();
+  $("pickEntry").value = id;   // reached from the list or queue too
   window.scrollTo({ top: 0, behavior: "smooth" });
   say("info", "Editing " + e.label + ". The league is locked while editing.");
 }
