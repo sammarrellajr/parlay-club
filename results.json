@@ -12,7 +12,6 @@
       "id": "2026-08-29-cfb",
       "date": "2026-08-29",
       "league": "cfb",
-      "label": "Sat 8/29 College",
       "picks": {
         "Drew": {
           "result": "L",
@@ -33,6 +32,35 @@
         "Tyler": {
           "result": "W",
           "pick": "UNC +8.5"
+        }
+      },
+      "label": "Sat 8/29 College"
+    },
+    {
+      "id": "2026-09-04-cfb",
+      "date": "2026-09-04",
+      "league": "cfb",
+      "label": "Fri 9/4 College",
+      "picks": {
+        "Drew": {
+          "result": "W",
+          "pick": "Oklahoma/UTEP Under"
+        },
+        "Pat": {
+          "result": "W",
+          "pick": "SJSU +2.5"
+        },
+        "Sam": {
+          "result": "W",
+          "pick": "EMU/SJSU Under"
+        },
+        "Tim": {
+          "result": "L",
+          "pick": "USC/FSU Over"
+        },
+        "Tyler": {
+          "result": "L",
+          "pick": "Purdue -34.5"
         }
       }
     }
