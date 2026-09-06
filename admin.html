@@ -64,6 +64,16 @@
       <div class="hint" id="dateHint"></div>
     </div>
 
+    <div class="card">
+      <h2>Paste picks</h2>
+      <p class="cs">Paste the slip summary line and it fills all five in order.</p>
+      <textarea id="pasteBox" rows="3" placeholder="Texas -29.5, Under 59.5, Over 54.5, Boise State +24.5, Pittsburgh -16.5"></textarea>
+      <div style="display:grid;gap:8px;margin-top:10px">
+        <button class="btn" id="fillPicks">Fill picks</button>
+      </div>
+      <div class="hint" id="pasteHint">Commas or one per line both work. Results stay as you set them.</div>
+    </div>
+
     <div id="entries"></div>
 
     <div class="card" style="margin-top:14px">
@@ -269,8 +279,11 @@ function buildForm(entry) {
             <button type="button" data-v="P" class="pend ${v.result === "P" ? "on-p" : ""}">PENDING</button>
           </span>
         </div>
-        <div class="pick-in"><input type="text" class="pick"
-          placeholder="${lg.full} pick (optional)" value="${esc(v.pick || "")}"></div>
+        <div class="pick-in">
+          <input type="text" class="pick" autocomplete="off" autocorrect="off" spellcheck="false"
+            placeholder="${lg.full} pick (optional)" value="${esc(v.pick || "")}">
+          <div class="sugg" hidden></div>
+        </div>
       </div>
     </div>`;
   }).join("");
@@ -284,6 +297,40 @@ function buildForm(entry) {
       if (!already) btn.classList.add(val === "W" ? "on-w" : val === "L" ? "on-l" : "on-p");
     });
   });
+
+  $("entries").querySelectorAll(".pick").forEach(wireSuggest);
+}
+
+/* Type-ahead under a pick field: prior picks first, then team names. */
+function wireSuggest(input) {
+  const box = input.parentNode.querySelector(".sugg");
+  const prior = new Set((DATA ? priorPicks(DATA) : []).map(t => t.toLowerCase()));
+
+  const close = () => { box.hidden = true; box.innerHTML = ""; };
+
+  const refresh = () => {
+    const hits = suggestPicks(input.value, DATA, 6);
+    if (!hits.length) return close();
+    box.innerHTML = hits.map(h =>
+      `<button type="button" class="${prior.has(h.toLowerCase()) ? "prior" : ""}">${esc(h)}</button>`
+    ).join("");
+    box.hidden = false;
+    [...box.children].forEach((b, i) => {
+      // mousedown fires before blur, so the field keeps focus
+      b.addEventListener("mousedown", ev => ev.preventDefault());
+      b.addEventListener("click", () => {
+        const val = hits[i];
+        // A whole prior pick drops in complete; a bare team name leaves room for the number.
+        input.value = prior.has(val.toLowerCase()) ? val : val + " ";
+        input.focus();
+        refresh();
+      });
+    });
+  };
+
+  input.addEventListener("input", refresh);
+  input.addEventListener("focus", refresh);
+  input.addEventListener("blur", () => setTimeout(close, 120));
 }
 
 function readForm() {
@@ -320,6 +367,22 @@ function nextIdFor(date, league) {
   while (taken.has(base + "#" + n)) n++;
   return base + "#" + n;
 }
+
+/* ---------- paste ---------- */
+$("fillPicks").addEventListener("click", () => {
+  const picks = parsePastedPicks($("pasteBox").value);
+  if (!picks.length) { say("err", "Nothing to read in that paste."); return; }
+
+  const boxes = [...$("entries").querySelectorAll(".ebox")];
+  const n = Math.min(picks.length, boxes.length);
+  for (let i = 0; i < n; i++) boxes[i].querySelector(".pick").value = picks[i];
+
+  const names = boxes.slice(0, n).map(b => b.dataset.player).join(", ");
+  $("pasteHint").textContent = picks.length > boxes.length
+    ? `Filled ${n} (${names}). Found ${picks.length}, so check the extras.`
+    : `Filled ${n} of ${boxes.length}: ${names}. Check the order before saving.`;
+  say("ok", "Filled " + n + " pick" + (n === 1 ? "" : "s") + ".");
+});
 
 /* ---------- save ---------- */
 $("save").addEventListener("click", async () => {
@@ -373,6 +436,8 @@ function resetForm() {
   $("save").textContent = "Save entry";
   defaultLeagueAndDate();
   buildForm();
+  $("pasteBox").value = "";
+  $("pasteHint").textContent = "Commas or one per line both work. Results stay as you set them.";
 }
 
 $("cancelEdit").addEventListener("click", () => { resetForm(); renderList(); say(""); window.scrollTo({ top: 0 }); });
