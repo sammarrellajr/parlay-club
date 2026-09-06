@@ -522,8 +522,44 @@ input:focus { outline: none; border-color: #3f7dd6; box-shadow: 0 0 0 3px rgba(6
 .wl button.pend { font-size: 12px; letter-spacing: 0.5px; }
 .wl button.on-p { background: var(--gold); border-color: var(--gold); color: #241a02; }
 
-.pick-in { margin-top: 7px; }
+.pick-in { margin-top: 7px; position: relative; }
 .pick-in input { font-size: 15px; padding: 9px 11px; min-height: 40px; }
+
+/* suggestion chips under a pick field */
+.sugg { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 7px; }
+.sugg[hidden] { display: none; }
+.sugg button {
+  border: 1px solid #35415a;
+  background: #131a26;
+  color: var(--text);
+  border-radius: 999px;
+  padding: 7px 12px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.sugg button:active { background: var(--panel-hi); }
+.sugg button.prior { border-color: #2f5c42; color: var(--accent-soft); }
+
+textarea {
+  width: 100%;
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+  color: var(--text);
+  border-radius: 10px;
+  padding: 11px 12px;
+  font-size: 16px;
+  font-family: inherit;
+  line-height: 1.4;
+  resize: vertical;
+  -webkit-appearance: none;
+  appearance: none;
+}
+textarea:focus { outline: none; border-color: #3f7dd6; box-shadow: 0 0 0 3px rgba(63, 125, 214, 0.2); }
 
 .btn {
   display: inline-flex;
