@@ -56,6 +56,12 @@
   <!-- EDITOR -->
   <div id="app" style="display:none">
 
+    <div class="card" id="queue" style="display:none">
+      <h2>Needs results</h2>
+      <p class="cs">Entries you logged ahead of time. Tap to settle them.</p>
+      <div id="queueList"></div>
+    </div>
+
     <div class="card">
       <h2 id="editorTitle">New entry</h2>
       <p class="cs" id="editorSub">Pick the date, then tap W, L or Pending for each guy.</p>
@@ -68,8 +74,9 @@
       <h2>Paste picks</h2>
       <p class="cs">Paste the slip summary line and it fills all five in order.</p>
       <textarea id="pasteBox" rows="3" placeholder="Texas -29.5, Under 59.5, Over 54.5, Boise State +24.5, Pittsburgh -16.5"></textarea>
-      <div style="display:grid;gap:8px;margin-top:10px">
+      <div class="two" style="margin-top:10px">
         <button class="btn" id="fillPicks">Fill picks</button>
+        <button class="btn" id="allPending">All pending</button>
       </div>
       <div class="hint" id="pasteHint">Commas or one per line both work. Results stay as you set them.</div>
     </div>
@@ -384,12 +391,34 @@ $("fillPicks").addEventListener("click", () => {
   say("ok", "Filled " + n + " pick" + (n === 1 ? "" : "s") + ".");
 });
 
+$("allPending").addEventListener("click", () => {
+  setAllPending();
+  say("ok", "All set to pending. Save now, settle later.");
+});
+
+function setAllPending() {
+  $("entries").querySelectorAll(".ebox").forEach(row => {
+    const wl = row.querySelector(".wl");
+    wl.querySelectorAll("button").forEach(b => b.classList.remove("on-w", "on-l", "on-p"));
+    wl.querySelector('[data-v="P"]').classList.add("on-p");
+  });
+}
+
 /* ---------- save ---------- */
 $("save").addEventListener("click", async () => {
   const date = $("date").value;
   if (!date) { say("err", "Pick a date."); return; }
-  const { picks, marked, missing } = readForm();
-  if (marked === 0) { say("err", "Nothing marked. Tap W, L or Pending for at least one guy."); return; }
+  let { picks, marked, missing } = readForm();
+
+  // Logging picks ahead of the games: nothing marked but the picks are filled in.
+  if (marked === 0) {
+    const hasPicks = Object.keys(picks).some(p => picks[p].pick);
+    if (!hasPicks) { say("err", "Nothing marked. Tap W, L or Pending for at least one guy."); return; }
+    if (!confirm("No results marked yet.\n\nSave all " + Object.keys(picks).length +
+                 " as pending so you can settle them after the games?")) return;
+    setAllPending();
+    ({ picks, marked, missing } = readForm());
+  }
 
   const dupes = existingFor(date, LG);
   if (!EDITING && dupes.length) {
@@ -449,6 +478,7 @@ function renderList() {
   $("listTitle").textContent = "Logged " + (LG === "cfb" ? "college" : "NFL");
   if (!list.length) {
     el.innerHTML = '<div class="hint">Nothing logged yet.</div>';
+    renderQueue();
     return;
   }
   el.innerHTML = list.slice().reverse().map(e => {
@@ -471,6 +501,33 @@ function renderList() {
 
   el.querySelectorAll("[data-edit]").forEach(b => b.addEventListener("click", () => editEntry(b.dataset.edit)));
   el.querySelectorAll("[data-del]").forEach(b => b.addEventListener("click", () => deleteEntry(b.dataset.del)));
+
+  renderQueue();
+}
+
+/* Anything still carrying a pending pick, across both leagues. */
+function renderQueue() {
+  const card = $("queue");
+  const el = $("queueList");
+  const list = DATA.entries.filter(e =>
+    DATA.players.some(p => (e.picks[p] || {}).result === "P"));
+
+  if (!list.length) { card.style.display = "none"; return; }
+  card.style.display = "block";
+
+  el.innerHTML = list.slice().reverse().map(e => {
+    const n = DATA.players.filter(p => (e.picks[p] || {}).result === "P").length;
+    return `<div class="lrow">
+      <div>
+        <div class="lt">${esc(e.label)}</div>
+        <div class="lm">${n} still pending</div>
+      </div>
+      <button class="btn sm" data-settle="${esc(e.id)}">Settle</button>
+    </div>`;
+  }).join("");
+
+  el.querySelectorAll("[data-settle]").forEach(b =>
+    b.addEventListener("click", () => editEntry(b.dataset.settle)));
 }
 
 function editEntry(id) {
