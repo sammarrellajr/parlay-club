@@ -166,6 +166,19 @@ a { color: var(--accent); }
   font-variant-numeric: tabular-nums;
 }
 
+.tile.small .value { font-size: 21px; margin-top: 8px; }
+
+.streak {
+  display: inline-block;
+  font-size: 12px;
+  font-weight: 700;
+  color: #c8ffdf;
+  background: var(--accent-dim);
+  border-radius: 6px;
+  padding: 3px 8px;
+  white-space: nowrap;
+}
+
 /* Tables */
 table {
   width: 100%;
@@ -212,15 +225,6 @@ tbody tr:last-child td { border-bottom: none; }
 .pct.good { color: var(--accent); }
 .pct.bad { color: var(--loss); }
 .pct.even { color: var(--muted); }
-
-.bar {
-  height: 6px;
-  border-radius: 3px;
-  background: var(--panel-2);
-  overflow: hidden;
-  min-width: 70px;
-}
-.bar > i { display: block; height: 100%; background: var(--accent); }
 
 /* Form pills */
 .form-dots { display: flex; gap: 4px; }
