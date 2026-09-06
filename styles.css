@@ -545,6 +545,39 @@ input:focus { outline: none; border-color: #3f7dd6; box-shadow: 0 0 0 3px rgba(6
 .sugg button:active { background: var(--panel-hi); }
 .sugg button.prior { border-color: #2f5c42; color: var(--accent-soft); }
 
+/* assign a parsed pick to a person */
+.assign { margin-top: 12px; display: grid; gap: 7px; }
+.assign[hidden] { display: none; }
+.arow {
+  display: grid;
+  grid-template-columns: 1fr 118px;
+  gap: 9px;
+  align-items: center;
+}
+.arow .apick {
+  font-size: 13.5px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.arow .apick.skipped { color: var(--dim); text-decoration: line-through; }
+
+select {
+  width: 100%;
+  background: var(--panel-hi);
+  border: 1px solid var(--line);
+  color: var(--text);
+  border-radius: 9px;
+  padding: 9px 10px;
+  font-size: 15px;
+  font-family: inherit;
+  min-height: 40px;
+  -webkit-appearance: none;
+  appearance: none;
+  text-align: center;
+}
+select:focus { outline: none; border-color: #3f7dd6; }
+
 textarea {
   width: 100%;
   background: var(--panel-2);
