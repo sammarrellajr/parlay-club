@@ -554,13 +554,18 @@ input:focus { outline: none; border-color: #3f7dd6; box-shadow: 0 0 0 3px rgba(6
   gap: 9px;
   align-items: center;
 }
-.arow .apick {
-  font-size: 13.5px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+
+input.apick {
+  width: 100%;
+  font-size: 14px;
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  padding: 9px 11px;
+  min-height: 40px;
+  color: var(--text);
 }
-.arow .apick.skipped { color: var(--dim); text-decoration: line-through; }
+input.apick.skipped { color: var(--dim); text-decoration: line-through; }
 
 select {
   width: 100%;
