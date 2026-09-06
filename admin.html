@@ -6,8 +6,10 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="Parlay Admin">
+<meta name="apple-mobile-web-app-title" content="Parlay Club">
 <meta name="theme-color" content="#0a0d12">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" href="apple-touch-icon.png">
 <title>Parlay Club Admin</title>
 <link rel="stylesheet" href="styles.css">
 </head>
@@ -24,7 +26,11 @@
         <a class="icon-btn" href="index.html">Done</a>
       </div>
     </div>
-    <div style="height:11px"></div>
+    <div class="seg" id="lgSeg" style="display:none">
+      <button data-lg="cfb" class="on">College</button>
+      <button data-lg="nfl">NFL</button>
+    </div>
+    <div id="topPad" style="height:11px"></div>
   </div>
 
   <div class="msg ok" id="ok"></div>
@@ -52,26 +58,18 @@
 
     <div class="card">
       <h2 id="editorTitle">New entry</h2>
-      <p class="cs" id="editorSub">Tap W or L for each pick. More than one entry per weekend is fine.</p>
-      <div class="fields">
-        <div class="two">
-          <div><label class="fl" for="start">Start</label><input type="date" id="start"></div>
-          <div><label class="fl" for="end">End</label><input type="date" id="end"></div>
-        </div>
-        <div>
-          <label class="fl" for="label">Label</label>
-          <input type="text" id="label" placeholder="9/5-9/6 Weekend">
-          <div class="hint">Auto-fills from the dates, adds #2 if that date already has an entry.</div>
-        </div>
-      </div>
+      <p class="cs" id="editorSub">Pick the date, then tap W or L for each guy.</p>
+      <label class="fl" for="date">Date</label>
+      <input type="date" id="date">
+      <div class="hint" id="dateHint"></div>
     </div>
 
     <div id="entries"></div>
 
     <div class="card" style="margin-top:14px">
-      <h2>Logged entries</h2>
+      <h2 id="listTitle">Logged</h2>
       <p class="cs">Newest first. Edit loads it back into the form.</p>
-      <div id="weeklist"></div>
+      <div id="list"></div>
     </div>
 
     <div class="savebar">
@@ -91,6 +89,8 @@ let STATE = { owner: "", repo: "", branch: "main", token: "" };
 let DATA = null;
 let SHA = null;
 let EDITING = null;
+let LG = "cfb";
+let dateTouched = false;
 
 const $ = id => document.getElementById(id);
 
@@ -144,9 +144,14 @@ async function fetchFile() {
 }
 
 async function commitFile(nextData, message) {
+  const payload = {
+    players: nextData.players,
+    season: nextData.season,
+    entries: nextData.entries
+  };
   const body = {
     message,
-    content: b64encode(JSON.stringify(nextData, null, 2) + "\n"),
+    content: b64encode(JSON.stringify(payload, null, 2) + "\n"),
     branch: STATE.branch,
     sha: SHA
   };
@@ -191,132 +196,149 @@ async function connect(silent) {
   localStorage.setItem("pc_token", STATE.token);
   $("setup").style.display = "none";
   $("app").style.display = "block";
+  $("lgSeg").style.display = "grid";
+  $("topPad").style.display = "none";
   if (!silent) say("ok", "Connected.");
+  defaultLeagueAndDate();
   buildForm();
-  defaultDates();
-  renderWeekList();
+  renderList();
 }
 
 $("connect").addEventListener("click", () => connect(false));
 
-/* ---------- form ---------- */
-function buildForm(week) {
-  const players = (DATA && DATA.players) || DEFAULT_PLAYERS;
-  $("entries").innerHTML = players.map(p => {
-    const e = (week && week.entries[p]) || {};
-    return `<div class="ebox" data-player="${esc(p)}">
-      <div class="ename">${esc(p)}</div>
-      ${LEAGUES.map(lg => {
-        const leg = e[lg.key] || {};
-        return `<div class="leg">
-          <div class="leg-top">
-            <span class="leg-tag">${lg.label}</span>
-            <span class="wl" data-league="${lg.key}">
-              <button type="button" data-v="W" class="${leg.result === "W" ? "on-w" : ""}">W</button>
-              <button type="button" data-v="L" class="${leg.result === "L" ? "on-l" : ""}">L</button>
-            </span>
-          </div>
-          <div class="pick-in"><input type="text" class="pick" data-league="${lg.key}"
-            placeholder="${lg.full} pick (optional)" value="${esc(leg.pick || "")}"></div>
-        </div>`;
-      }).join("")}
-    </div>`;
-  }).join("");
+/* ---------- league + date ---------- */
 
-  $("entries").querySelectorAll(".wl button").forEach(btn => {
-    btn.addEventListener("click", () => {
-      const group = btn.parentNode;
-      const v = btn.dataset.v;
-      const already = btn.classList.contains("on-w") || btn.classList.contains("on-l");
-      group.querySelectorAll("button").forEach(b => b.classList.remove("on-w", "on-l"));
-      if (!already) btn.classList.add(v === "W" ? "on-w" : "on-l");
-    });
-  });
+/* Saturday is college, Sunday is NFL. Sun/Mon default to NFL, else college. */
+function defaultLeagueAndDate() {
+  const dow = new Date().getDay();
+  setLeague(dow === 0 || dow === 1 ? "nfl" : "cfb", true);
 }
 
-function readForm() {
-  const entries = {};
-  const missing = [];
-  let marked = 0;
-  $("entries").querySelectorAll(".ebox").forEach(row => {
-    const player = row.dataset.player;
-    const obj = {};
-    LEAGUES.forEach(lg => {
-      const wl = row.querySelector(`.wl[data-league="${lg.key}"]`);
-      const on = wl.querySelector(".on-w, .on-l");
-      const result = on ? on.dataset.v : null;
-      const pick = row.querySelector(`.pick[data-league="${lg.key}"]`).value.trim();
-      if (result) marked++; else missing.push(player + " " + lg.label);
-      obj[lg.key] = { result: result, pick: pick };
-    });
-    entries[player] = obj;
-  });
-  return { entries, marked, missing };
+function setLeague(key, snapDate) {
+  LG = key;
+  [...$("lgSeg").children].forEach(c => c.classList.toggle("on", c.dataset.lg === key));
+  if (snapDate && !dateTouched) $("date").value = iso(mostRecent(key === "nfl" ? 0 : 6));
+  updateDateHint();
 }
 
-function defaultDates() {
+function mostRecent(targetDow) {
   const now = new Date();
-  const back = (now.getDay() + 1) % 7; // days since the most recent Saturday
-  const sat = new Date(now.getFullYear(), now.getMonth(), now.getDate() - back);
-  const sun = new Date(sat.getFullYear(), sat.getMonth(), sat.getDate() + 1);
-  $("start").value = iso(sat);
-  $("end").value = iso(sun);
-  syncLabel();
+  const back = (now.getDay() - targetDow + 7) % 7;
+  return new Date(now.getFullYear(), now.getMonth(), now.getDate() - back);
 }
 
 function iso(d) {
   return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
 }
 
-/* Entries already logged for this date, ignoring the one being edited. */
-function existingForStart(start) {
-  if (!DATA || !start) return [];
-  return DATA.weeks.filter(w => w.start === start && w.id !== EDITING);
+function updateDateHint() {
+  const date = $("date").value;
+  const dupes = existingFor(date, LG);
+  const base = date ? "Saves as " + entryLabel(date, LG) + suffixFor(date, LG) : "Pick a date.";
+  $("dateHint").textContent = dupes.length
+    ? base + ". That date already has " + dupes.length + " logged."
+    : base;
+  $("editorSub").textContent = EDITING
+    ? "Editing an existing entry."
+    : "Pick the date, then tap W or L for each guy.";
 }
 
-/* Second entry on a date gets " #2", third " #3", and so on. */
-function suffixFor(start) {
-  const n = existingForStart(start).length;
+$("lgSeg").addEventListener("click", e => {
+  const b = e.target.closest("button");
+  if (!b || EDITING) return;
+  setLeague(b.dataset.lg, true);
+  buildForm();
+  renderList();
+});
+
+$("date").addEventListener("change", () => { dateTouched = true; updateDateHint(); });
+
+/* ---------- form ---------- */
+function buildForm(entry) {
+  const players = (DATA && DATA.players) || DEFAULT_PLAYERS;
+  const lg = LEAGUES.find(l => l.key === LG);
+  $("entries").innerHTML = players.map(p => {
+    const v = (entry && entry.picks[p]) || {};
+    return `<div class="ebox" data-player="${esc(p)}">
+      <div class="ename">${esc(p)}</div>
+      <div class="leg">
+        <div class="leg-top">
+          <span class="wl">
+            <button type="button" data-v="W" class="${v.result === "W" ? "on-w" : ""}">W</button>
+            <button type="button" data-v="L" class="${v.result === "L" ? "on-l" : ""}">L</button>
+          </span>
+        </div>
+        <div class="pick-in"><input type="text" class="pick"
+          placeholder="${lg.full} pick (optional)" value="${esc(v.pick || "")}"></div>
+      </div>
+    </div>`;
+  }).join("");
+
+  $("entries").querySelectorAll(".wl button").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const group = btn.parentNode;
+      const val = btn.dataset.v;
+      const already = btn.classList.contains("on-w") || btn.classList.contains("on-l");
+      group.querySelectorAll("button").forEach(b => b.classList.remove("on-w", "on-l"));
+      if (!already) btn.classList.add(val === "W" ? "on-w" : "on-l");
+    });
+  });
+}
+
+function readForm() {
+  const picks = {};
+  const missing = [];
+  let marked = 0;
+  $("entries").querySelectorAll(".ebox").forEach(row => {
+    const player = row.dataset.player;
+    const on = row.querySelector(".on-w, .on-l");
+    const result = on ? on.dataset.v : null;
+    const pick = row.querySelector(".pick").value.trim();
+    if (result) marked++; else missing.push(player);
+    picks[player] = { result: result, pick: pick };
+  });
+  return { picks, marked, missing };
+}
+
+/* ---------- ids ---------- */
+function existingFor(date, league) {
+  if (!DATA || !date) return [];
+  return DATA.entries.filter(e => e.date === date && e.league === league && e.id !== EDITING);
+}
+
+function suffixFor(date, league) {
+  const n = existingFor(date, league).length;
   return n ? " #" + (n + 1) : "";
 }
 
-function nextIdFor(start) {
-  const taken = new Set(DATA.weeks.map(w => w.id));
-  if (!taken.has(start)) return start;
+function nextIdFor(date, league) {
+  const base = date + "-" + league;
+  const taken = new Set(DATA.entries.map(e => e.id));
+  if (!taken.has(base)) return base;
   let n = 2;
-  while (taken.has(start + "#" + n)) n++;
-  return start + "#" + n;
+  while (taken.has(base + "#" + n)) n++;
+  return base + "#" + n;
 }
-
-let labelTouched = false;
-function syncLabel() {
-  if (labelTouched) return;
-  const base = weekendLabel($("start").value, $("end").value);
-  if (base) $("label").value = base + suffixFor($("start").value);
-}
-$("start").addEventListener("change", syncLabel);
-$("end").addEventListener("change", syncLabel);
-$("label").addEventListener("input", () => { labelTouched = true; });
 
 /* ---------- save ---------- */
 $("save").addEventListener("click", async () => {
-  const start = $("start").value;
-  if (!start) { say("err", "Pick a start date."); return; }
-  const { entries, marked, missing } = readForm();
-  if (marked === 0) { say("err", "Nothing marked. Tap W or L for at least one pick."); return; }
+  const date = $("date").value;
+  if (!date) { say("err", "Pick a date."); return; }
+  const { picks, marked, missing } = readForm();
+  if (marked === 0) { say("err", "Nothing marked. Tap W or L for at least one guy."); return; }
 
-  const dupes = existingForStart(start);
+  const dupes = existingFor(date, LG);
   if (!EDITING && dupes.length) {
-    const ok = confirm("That date already has " + dupes.length + " entr" + (dupes.length === 1 ? "y" : "ies") +
-      ":\n\n" + dupes.map(w => w.label).join("\n") +
+    const ok = confirm("That date already has " + dupes.length + " " +
+      (LG === "cfb" ? "college" : "NFL") + " entr" + (dupes.length === 1 ? "y" : "ies") +
+      ":\n\n" + dupes.map(e => e.label).join("\n") +
       "\n\nSave this as a separate entry #" + (dupes.length + 1) + "?" +
-      "\n\nTo correct the existing one instead, cancel and use Edit below.");
+      "\n\nTo correct the existing one, cancel and use Edit below.");
     if (!ok) return;
   }
 
   if (missing.length) {
-    const ok = confirm(missing.length + " pick" + (missing.length === 1 ? " is" : "s are") +
-      " still blank:\n\n" + missing.join("\n") +
+    const ok = confirm(missing.length + " still blank:\n\n" + missing.join("\n") +
       "\n\nBlank picks count toward nobody's record. Save anyway?");
     if (!ok) return;
   }
@@ -325,18 +347,16 @@ $("save").addEventListener("click", async () => {
   say("info", "Saving...");
   try {
     DATA = await fetchFile(); // refresh so we never clobber a newer save
-    const id = EDITING || nextIdFor(start);
-    const label = $("label").value.trim() ||
-      (weekendLabel(start, $("end").value) + suffixFor(start)) ||
-      "Untitled entry";
-    const week = { id, label, start, end: $("end").value, entries };
-    const i = DATA.weeks.findIndex(w => w.id === id);
-    if (i >= 0) DATA.weeks[i] = week; else DATA.weeks.push(week);
-    DATA.weeks.sort((a, b) => String(a.start || a.id).localeCompare(String(b.start || b.id)));
+    const id = EDITING || nextIdFor(date, LG);
+    const label = entryLabel(date, LG) + suffixFor(date, LG);
+    const entry = { id, date, league: LG, label, picks };
+    const i = DATA.entries.findIndex(e => e.id === id);
+    if (i >= 0) DATA.entries[i] = entry; else DATA.entries.push(entry);
+    DATA.entries.sort((a, b) => a.date.localeCompare(b.date) || a.id.localeCompare(b.id));
     await commitFile(DATA, (i >= 0 ? "Update " : "Add ") + label);
     say("ok", (i >= 0 ? "Updated " : "Saved ") + label + ".");
     resetForm();
-    renderWeekList();
+    renderList();
   } catch (e) {
     say("err", e.message);
   } finally {
@@ -346,75 +366,77 @@ $("save").addEventListener("click", async () => {
 
 function resetForm() {
   EDITING = null;
-  labelTouched = false;
+  dateTouched = false;
   $("editorTitle").textContent = "New entry";
   $("secondary").style.display = "none";
   $("save").textContent = "Save entry";
+  defaultLeagueAndDate();
   buildForm();
-  defaultDates();
 }
 
-$("cancelEdit").addEventListener("click", () => { resetForm(); say(""); window.scrollTo({ top: 0 }); });
+$("cancelEdit").addEventListener("click", () => { resetForm(); renderList(); say(""); window.scrollTo({ top: 0 }); });
 
-/* ---------- entry list ---------- */
-function renderWeekList() {
-  const el = $("weeklist");
-  if (!DATA.weeks.length) {
-    el.innerHTML = '<div class="hint">No entries yet.</div>';
+/* ---------- list ---------- */
+function renderList() {
+  const el = $("list");
+  const list = DATA.entries.filter(e => e.league === LG);
+  $("listTitle").textContent = "Logged " + (LG === "cfb" ? "college" : "NFL");
+  if (!list.length) {
+    el.innerHTML = '<div class="hint">Nothing logged yet.</div>';
     return;
   }
-  el.innerHTML = DATA.weeks.slice().reverse().map(w => {
+  el.innerHTML = list.slice().reverse().map(e => {
     let win = 0, loss = 0;
-    DATA.players.forEach(p => LEAGUES.forEach(lg => {
-      const r = ((w.entries[p] || {})[lg.key] || {}).result;
+    DATA.players.forEach(p => {
+      const r = (e.picks[p] || {}).result;
       if (r === "W") win++; else if (r === "L") loss++;
-    }));
+    });
     return `<div class="lrow">
       <div>
-        <div class="lt">${esc(w.label)}</div>
+        <div class="lt">${esc(e.label)}</div>
         <div class="lm">${win}-${loss} group</div>
       </div>
       <div style="display:flex;gap:7px;flex:none">
-        <button class="btn sm" data-edit="${esc(w.id)}">Edit</button>
-        <button class="btn sm danger" data-del="${esc(w.id)}">Delete</button>
+        <button class="btn sm" data-edit="${esc(e.id)}">Edit</button>
+        <button class="btn sm danger" data-del="${esc(e.id)}">Delete</button>
       </div>
     </div>`;
   }).join("");
 
-  el.querySelectorAll("[data-edit]").forEach(b => b.addEventListener("click", () => editWeek(b.dataset.edit)));
-  el.querySelectorAll("[data-del]").forEach(b => b.addEventListener("click", () => deleteWeek(b.dataset.del)));
+  el.querySelectorAll("[data-edit]").forEach(b => b.addEventListener("click", () => editEntry(b.dataset.edit)));
+  el.querySelectorAll("[data-del]").forEach(b => b.addEventListener("click", () => deleteEntry(b.dataset.del)));
 }
 
-function editWeek(id) {
-  const w = DATA.weeks.find(x => x.id === id);
-  if (!w) return;
+function editEntry(id) {
+  const e = DATA.entries.find(x => x.id === id);
+  if (!e) return;
   EDITING = id;
-  labelTouched = true;
-  $("editorTitle").textContent = "Editing " + w.label;
+  dateTouched = true;
+  setLeague(e.league, false);
+  $("date").value = e.date || "";
+  $("editorTitle").textContent = "Editing " + e.label;
   $("secondary").style.display = "grid";
   $("save").textContent = "Update entry";
-  $("start").value = w.start || "";
-  $("end").value = w.end || "";
-  $("label").value = w.label || "";
-  buildForm(w);
+  buildForm(e);
+  updateDateHint();
   window.scrollTo({ top: 0, behavior: "smooth" });
-  say("info", "Editing " + w.label + ".");
+  say("info", "Editing " + e.label + ". The league is locked while editing.");
 }
 
-async function deleteWeek(id) {
-  const w = DATA.weeks.find(x => x.id === id);
-  if (!w) return;
-  if (!confirm('Delete "' + w.label + '"?')) return;
+async function deleteEntry(id) {
+  const e = DATA.entries.find(x => x.id === id);
+  if (!e) return;
+  if (!confirm('Delete "' + e.label + '"?')) return;
   say("info", "Deleting...");
   try {
     DATA = await fetchFile();
-    DATA.weeks = DATA.weeks.filter(x => x.id !== id);
-    await commitFile(DATA, "Delete " + w.label);
+    DATA.entries = DATA.entries.filter(x => x.id !== id);
+    await commitFile(DATA, "Delete " + e.label);
     if (EDITING === id) resetForm();
-    say("ok", "Deleted " + w.label + ".");
-    renderWeekList();
-  } catch (e) {
-    say("err", e.message);
+    say("ok", "Deleted " + e.label + ".");
+    renderList();
+  } catch (err) {
+    say("err", err.message);
   }
 }
 
