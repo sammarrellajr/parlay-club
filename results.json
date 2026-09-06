@@ -1,5 +1,40 @@
 {
-  "players": ["Drew", "Pat", "Sam", "Tim", "Tyler"],
+  "players": [
+    "Drew",
+    "Pat",
+    "Sam",
+    "Tim",
+    "Tyler"
+  ],
   "season": "2026",
-  "entries": []
+  "entries": [
+    {
+      "id": "2026-08-29-cfb",
+      "date": "2026-08-29",
+      "league": "cfb",
+      "label": "Sat 8/29 College",
+      "picks": {
+        "Drew": {
+          "result": "L",
+          "pick": "Memphis/UNLV Over"
+        },
+        "Pat": {
+          "result": "W",
+          "pick": ""
+        },
+        "Sam": {
+          "result": "W",
+          "pick": "Virginia -4"
+        },
+        "Tim": {
+          "result": "W",
+          "pick": "TCU/UNC Under"
+        },
+        "Tyler": {
+          "result": "W",
+          "pick": "UNC +8.5"
+        }
+      }
+    }
+  ]
 }
