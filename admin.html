@@ -58,7 +58,7 @@
 
     <div class="card">
       <h2 id="editorTitle">New entry</h2>
-      <p class="cs" id="editorSub">Pick the date, then tap W or L for each guy.</p>
+      <p class="cs" id="editorSub">Pick the date, then tap W, L or Pending for each guy.</p>
       <label class="fl" for="date">Date</label>
       <input type="date" id="date">
       <div class="hint" id="dateHint"></div>
@@ -240,7 +240,7 @@ function updateDateHint() {
     : base;
   $("editorSub").textContent = EDITING
     ? "Editing an existing entry."
-    : "Pick the date, then tap W or L for each guy.";
+    : "Pick the date, then tap W, L or Pending for each guy.";
 }
 
 $("lgSeg").addEventListener("click", e => {
@@ -266,6 +266,7 @@ function buildForm(entry) {
           <span class="wl">
             <button type="button" data-v="W" class="${v.result === "W" ? "on-w" : ""}">W</button>
             <button type="button" data-v="L" class="${v.result === "L" ? "on-l" : ""}">L</button>
+            <button type="button" data-v="P" class="pend ${v.result === "P" ? "on-p" : ""}">PENDING</button>
           </span>
         </div>
         <div class="pick-in"><input type="text" class="pick"
@@ -278,9 +279,9 @@ function buildForm(entry) {
     btn.addEventListener("click", () => {
       const group = btn.parentNode;
       const val = btn.dataset.v;
-      const already = btn.classList.contains("on-w") || btn.classList.contains("on-l");
-      group.querySelectorAll("button").forEach(b => b.classList.remove("on-w", "on-l"));
-      if (!already) btn.classList.add(val === "W" ? "on-w" : "on-l");
+      const already = btn.classList.contains("on-w") || btn.classList.contains("on-l") || btn.classList.contains("on-p");
+      group.querySelectorAll("button").forEach(b => b.classList.remove("on-w", "on-l", "on-p"));
+      if (!already) btn.classList.add(val === "W" ? "on-w" : val === "L" ? "on-l" : "on-p");
     });
   });
 }
@@ -291,10 +292,10 @@ function readForm() {
   let marked = 0;
   $("entries").querySelectorAll(".ebox").forEach(row => {
     const player = row.dataset.player;
-    const on = row.querySelector(".on-w, .on-l");
+    const on = row.querySelector(".on-w, .on-l, .on-p");
     const result = on ? on.dataset.v : null;
     const pick = row.querySelector(".pick").value.trim();
-    if (result) marked++; else missing.push(player);
+    if (result) marked++; else missing.push(player);   // pending counts as marked
     picks[player] = { result: result, pick: pick };
   });
   return { picks, marked, missing };
@@ -325,7 +326,7 @@ $("save").addEventListener("click", async () => {
   const date = $("date").value;
   if (!date) { say("err", "Pick a date."); return; }
   const { picks, marked, missing } = readForm();
-  if (marked === 0) { say("err", "Nothing marked. Tap W or L for at least one guy."); return; }
+  if (marked === 0) { say("err", "Nothing marked. Tap W, L or Pending for at least one guy."); return; }
 
   const dupes = existingFor(date, LG);
   if (!EDITING && dupes.length) {
@@ -386,15 +387,15 @@ function renderList() {
     return;
   }
   el.innerHTML = list.slice().reverse().map(e => {
-    let win = 0, loss = 0;
+    let win = 0, loss = 0, pend = 0;
     DATA.players.forEach(p => {
       const r = (e.picks[p] || {}).result;
-      if (r === "W") win++; else if (r === "L") loss++;
+      if (r === "W") win++; else if (r === "L") loss++; else if (r === "P") pend++;
     });
     return `<div class="lrow">
       <div>
         <div class="lt">${esc(e.label)}</div>
-        <div class="lm">${win}-${loss} group</div>
+        <div class="lm">${win}-${loss} group${pend ? " &middot; " + pend + " pending" : ""}</div>
       </div>
       <div style="display:flex;gap:7px;flex:none">
         <button class="btn sm" data-edit="${esc(e.id)}">Edit</button>
