@@ -50,6 +50,29 @@
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
 .dpk.blank { color: var(--dim); font-style: italic; }
+
+/* Parlay banner: all five legs cashing is the whole point, so it gets its
+   own full-width row above everything else. */
+.parlay {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  background: var(--panel); border: 1px solid var(--line);
+  border-radius: var(--r); padding: 13px 16px; margin: 14px 0 9px;
+}
+.tiles { margin-top: 0; }
+.parlay .plab {
+  font-size: 11px; font-weight: 800; letter-spacing: 1px;
+  text-transform: uppercase; color: var(--dim);
+}
+.parlay .psubl { font-size: 11.5px; color: var(--muted); margin-top: 3px; }
+.parlay .pval {
+  font-size: 36px; font-weight: 800; letter-spacing: -1.5px;
+  font-variant-numeric: tabular-nums; color: var(--text); line-height: 1; flex: none;
+}
+.parlay.hit {
+  border-color: #6b5312;
+  background: linear-gradient(180deg, #241d07 0%, var(--panel) 75%);
+}
+.parlay.hit .plab, .parlay.hit .pval { color: var(--gold); }
 </style>
 </head>
 <body>
@@ -74,6 +97,8 @@
   </div>
 
   <div class="msg err" id="err"></div>
+
+  <div class="parlay" id="parlay"></div>
 
   <div class="tiles" id="tiles"></div>
 
@@ -147,6 +172,7 @@ document.addEventListener("visibilitychange", () => { if (!document.hidden) boot
 
 const LG_NAME = { all: "Overall", cfb: "College Football", nfl: "NFL" };
 const TILE_LAB = { all: "Group overall", cfb: "Group college", nfl: "Group NFL" };
+const PARLAY_LAB = { all: "Parlay wins", cfb: "College parlay wins", nfl: "NFL parlay wins" };
 
 function render() {
   const key = LG;
@@ -155,6 +181,18 @@ function render() {
   const ld = STATS.leaders[key];
   const rows = STATS.byLeague[key];
   const n = STATS.counts[key];
+
+  const won = STATS.parlays[key];
+  const done = STATS.settled[key];
+  $("parlay").className = "parlay" + (won ? " hit" : "");
+  $("parlay").innerHTML =
+    `<div>
+       <div class="plab">${PARLAY_LAB[key]}</div>
+       <div class="psubl">${done
+         ? "out of " + done + " completed slate" + (done === 1 ? "" : "s")
+         : "no slate has finished yet"}</div>
+     </div>
+     <div class="pval">${won}</div>`;
 
   $("tiles").innerHTML =
     `<div class="tile">
