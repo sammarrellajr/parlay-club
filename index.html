@@ -2,21 +2,32 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Parlay Club">
+<meta name="theme-color" content="#0a0d12">
 <title>Parlay Club</title>
 <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-<div class="wrap">
+<div class="app">
 
-  <div class="topbar">
-    <div class="brand">
-      <h1>Parlay Club</h1>
-      <span class="season" id="season"></span>
+  <div class="top">
+    <div class="bar">
+      <div>
+        <h1 class="title">Parlay Club</h1>
+        <div class="sub-season" id="season"></div>
+      </div>
+      <div class="bar-actions">
+        <button class="icon-btn" id="refresh">Refresh</button>
+        <a class="icon-btn" href="admin.html">Admin</a>
+      </div>
     </div>
-    <div class="navlinks">
-      <button class="btn ghost small" id="refresh">Refresh</button>
-      <a class="btn small" href="admin.html">Admin</a>
+    <div class="seg" id="seg">
+      <button data-lg="cfb" class="on">College</button>
+      <button data-lg="nfl">NFL</button>
     </div>
   </div>
 
@@ -24,173 +35,147 @@
 
   <div class="tiles" id="tiles"></div>
 
-  <div class="card">
-    <h2>College Football</h2>
-    <p class="sub" id="cfbSub"></p>
-    <div style="overflow-x:auto">
-      <table id="cfbTable">
-        <thead>
-          <tr>
-            <th></th>
-            <th>Player</th>
-            <th class="num">Record</th>
-            <th class="num">Win %</th>
-            <th>Streak</th>
-            <th class="hide-sm">Last 5</th>
-          </tr>
-        </thead>
-        <tbody></tbody>
-      </table>
-    </div>
+  <div class="sec-head">
+    <h2 id="secTitle">Standings</h2>
+    <span class="note" id="secNote"></span>
   </div>
+  <div class="rows" id="rows"></div>
 
-  <div class="card">
-    <h2>NFL</h2>
-    <p class="sub" id="nflSub"></p>
-    <div style="overflow-x:auto">
-      <table id="nflTable">
-        <thead>
-          <tr>
-            <th></th>
-            <th>Player</th>
-            <th class="num">Record</th>
-            <th class="num">Win %</th>
-            <th>Streak</th>
-            <th class="hide-sm">Last 5</th>
-          </tr>
-        </thead>
-        <tbody></tbody>
-      </table>
-    </div>
-  </div>
-
-  <div class="card">
+  <div class="sec-head">
     <h2>Week by week</h2>
-    <p class="sub">Click an entry to see every pick.</p>
-    <div id="weeks"></div>
+    <span class="note" id="wkNote"></span>
   </div>
+  <div id="weeks"></div>
 
-  <p class="footnote" id="foot"></p>
+  <p class="foot-note" id="foot"></p>
 </div>
 
 <script src="app.js"></script>
 <script>
 let DATA = null;
+let STATS = null;
+let LG = "cfb";
+
+const $ = id => document.getElementById(id);
 
 async function boot() {
-  const err = document.getElementById("err");
-  err.classList.remove("show");
+  $("err").classList.remove("show");
   try {
     DATA = await loadResults();
   } catch (e) {
-    err.textContent = "Could not load results.json. " + e.message;
-    err.classList.add("show");
+    $("err").textContent = "Could not load results.json. " + e.message;
+    $("err").classList.add("show");
     return;
   }
-  render();
+  STATS = computeStats(DATA);
+  $("season").textContent = DATA.season ? DATA.season + " Season" : "";
+  renderLeague();
+  renderWeeks();
+  $("foot").textContent = "Live from results.json";
 }
 
-function render() {
-  const stats = computeStats(DATA);
-  document.getElementById("season").textContent = DATA.season ? DATA.season + " Season" : "";
+function renderLeague() {
+  const key = LG;
+  const rec = STATS.group[key];
+  const gp = key === "cfb" ? STATS.groupPct.cfb : STATS.groupPct.nfl;
+  const ld = STATS.leaders[key];
+  const rows = STATS.byLeague[key];
+  const n = STATS.weeksLogged;
 
-  const g = stats.group, gp = stats.groupPct;
-  const wk = stats.weeksLogged + " entr" + (stats.weeksLogged === 1 ? "y" : "ies");
+  $("tiles").innerHTML =
+    `<div class="tile">
+       <div class="lab">Group ${key === "cfb" ? "college" : "NFL"}</div>
+       <div class="val">${fmtRec(rec)}</div>
+       <div class="foot">${fmtPct(gp, rec)} &middot; ${n} entr${n === 1 ? "y" : "ies"}</div>
+     </div>
+     <div class="tile">
+       <div class="lab">Leader</div>
+       <div class="val name">${esc(leaderLabel(ld))}</div>
+       <div class="foot">${esc(leaderFoot(ld))}</div>
+     </div>`;
 
-  document.getElementById("tiles").innerHTML = [
-    tile("Group college", fmtRec(g.cfb), fmtPct(gp.cfb, g.cfb) + " across " + wk),
-    tile("Group NFL", fmtRec(g.nfl), fmtPct(gp.nfl, g.nfl) + " across " + wk),
-    tile("College leader", leaderLabel(stats.leaders.cfb), leaderFoot(stats.leaders.cfb), true),
-    tile("NFL leader", leaderLabel(stats.leaders.nfl), leaderFoot(stats.leaders.nfl), true)
-  ].join("");
+  $("secTitle").textContent = key === "cfb" ? "College Football" : "NFL";
 
-  leagueTable("cfbTable", stats.byLeague.cfb, "cfb");
-  leagueTable("nflTable", stats.byLeague.nfl, "nfl");
+  const hot = rows.filter(r => r.streak[key] >= 2).length;
+  $("secNote").textContent = hot ? hot + " on a streak" : "";
 
-  document.getElementById("cfbSub").textContent = subLine(stats.byLeague.cfb, "cfb");
-  document.getElementById("nflSub").textContent = subLine(stats.byLeague.nfl, "nfl");
-
-  renderWeeks(stats);
-  document.getElementById("foot").textContent = "Updated from results.json";
-}
-
-function subLine(rows, key) {
-  const hot = rows.filter(r => r.streak[key] >= 2);
-  if (!hot.length) return "Ranked by win percentage. Nobody is on a streak.";
-  const names = hot.map(r => r.name + " (" + r.streak[key] + ")");
-  return "Ranked by win percentage. On a streak: " + names.join(", ");
-}
-
-function leagueTable(id, rows, key) {
-  const tb = document.querySelector("#" + id + " tbody");
-  tb.innerHTML = rows.map((r, i) => {
-    const rec = r[key];
+  $("rows").innerHTML = rows.map((r, i) => {
+    const rc = r[key];
     const p = key === "cfb" ? r.cfbPct : r.nflPct;
-    const played = rec.w + rec.l;
-    const crown = i === 0 && played > 0 ? '<span class="crown">&#9733;</span>' : "";
-    const n = r.streak[key];
-    const streak = n >= 2
-      ? `<span class="streak">${n} straight</span>`
-      : '<span class="pickline">--</span>';
-    return `<tr>
-      <td class="rank">${i + 1}</td>
-      <td class="pname">${esc(r.name)}${crown}</td>
-      <td class="num rec">${fmtRec(rec)}</td>
-      <td class="num pct ${pctClass(p, rec)}">${fmtPct(p, rec)}</td>
-      <td>${streak}</td>
-      <td class="hide-sm">${formDots(r.seq[key])}</td>
-    </tr>`;
-  }).join("");
-}
-
-function renderWeeks(stats) {
-  const weeksEl = document.getElementById("weeks");
-  if (!DATA.weeks.length) {
-    weeksEl.innerHTML = '<div class="empty">Nothing logged yet. Head to Admin to add the first entry.</div>';
-    return;
-  }
-  const summaries = {};
-  stats.weekSummaries.forEach(s => summaries[s.id] = s);
-  weeksEl.innerHTML = DATA.weeks.slice().reverse().map((w, idx) => {
-    const s = summaries[w.id] || { w: 0, l: 0 };
-    const body = DATA.players.map(p => {
-      const e = w.entries[p] || {};
-      const legs = LEAGUES.map(lg => {
-        const leg = e[lg.key] || {};
-        const res = leg.result === "W" ? "w" : leg.result === "L" ? "l" : "none";
-        const mark = res === "none" ? "-" : leg.result;
-        const pick = leg.pick
-          ? `<span class="pk" title="${esc(leg.pick)}">${esc(leg.pick)}</span>`
-          : `<span class="pk blank">no pick logged</span>`;
-        return `<div class="wk-leg"><span class="dot ${res}">${mark}</span><span class="lg">${lg.label}</span>${pick}</div>`;
-      }).join("");
-      return `<div class="wk-row"><div class="wk-name">${esc(p)}</div><div class="wk-legs">${legs}</div></div>`;
-    }).join("");
-    return `<div class="week${idx === 0 ? " open" : ""}">
-      <div class="week-head" onclick="this.parentNode.classList.toggle('open')">
-        <span class="week-title">${esc(w.label)}</span>
-        <span class="week-meta">${s.w}-${s.l} group${s.counted && s.perfect ? " &nbsp;&#9733; sweep" : ""}</span>
+    const played = rc.w + rc.l;
+    const st = r.streak[key];
+    const lead = i === 0 && played > 0;
+    const sub = played
+      ? (st >= 2 ? `<span class="streak">${st} straight</span>` : "") + dots(r.seq[key])
+      : '<span class="nodata">No results yet</span>';
+    return `<div class="prow${lead ? " lead" : ""}">
+      <div class="pnum">${i + 1}</div>
+      <div class="pmain">
+        <div class="pnm">${esc(r.name)}${lead ? '<span class="crown">&#9733;</span>' : ""}</div>
+        <div class="psub">${sub}</div>
       </div>
-      <div class="week-body">${body}</div>
+      <div class="pright">
+        <div class="prec">${fmtRec(rc)}</div>
+        <div class="ppct ${pctClass(p, rc)}">${fmtPct(p, rc)}</div>
+      </div>
     </div>`;
   }).join("");
 }
 
-function tile(label, value, foot, small) {
-  return `<div class="tile${small ? " small" : ""}"><div class="label">${esc(label)}</div>` +
-         `<div class="value">${esc(value)}</div><div class="foot">${esc(foot)}</div></div>`;
-}
-
-function formDots(seq) {
+function dots(seq) {
   const last = (seq || []).filter(m => m !== null).slice(-5);
-  if (!last.length) return '<span class="pickline">--</span>';
-  return '<div class="form-dots">' + last.map(m => {
-    const c = m === "W" ? "w" : "l";
-    return `<span class="dot ${c}">${m}</span>`;
-  }).join("") + "</div>";
+  if (!last.length) return "";
+  return '<div class="dots">' + last.map(m =>
+    `<span class="dot ${m === "W" ? "w" : "l"}">${m}</span>`).join("") + "</div>";
 }
 
-document.getElementById("refresh").addEventListener("click", boot);
+function renderWeeks() {
+  const el = $("weeks");
+  if (!DATA.weeks.length) {
+    el.innerHTML = '<div class="empty">Nothing logged yet.<br>Tap Admin to add the first entry.</div>';
+    $("wkNote").textContent = "";
+    return;
+  }
+  $("wkNote").textContent = DATA.weeks.length + " logged";
+
+  const sums = {};
+  STATS.weekSummaries.forEach(s => sums[s.id] = s);
+
+  el.innerHTML = DATA.weeks.slice().reverse().map((w, idx) => {
+    const s = sums[w.id] || { w: 0, l: 0 };
+    const body = DATA.players.map(p => {
+      const e = w.entries[p] || {};
+      const legs = LEAGUES.map(lg => {
+        const leg = e[lg.key] || {};
+        const cls = leg.result === "W" ? "w" : leg.result === "L" ? "l" : "none";
+        const mark = leg.result || "-";
+        const pick = leg.pick
+          ? `<span class="wl-pick">${esc(leg.pick)}</span>`
+          : `<span class="wl-pick blank">no pick logged</span>`;
+        return `<div class="wl-leg"><span class="dot ${cls}">${mark}</span>` +
+               `<span class="wl-tag">${lg.label === "College" ? "CFB" : "NFL"}</span>${pick}</div>`;
+      }).join("");
+      return `<div class="wl-row"><div class="wl-name">${esc(p)}</div><div class="wl-legs">${legs}</div></div>`;
+    }).join("");
+    return `<div class="wk${idx === 0 ? " open" : ""}">
+      <div class="wk-head" onclick="this.parentNode.classList.toggle('open')">
+        <span class="wk-t">${esc(w.label)}</span>
+        <span class="wk-m">${s.counted && s.perfect ? '<span class="sweep">SWEEP</span>' : ""}${s.w}-${s.l}<span class="chev">&#9654;</span></span>
+      </div>
+      <div class="wk-body">${body}</div>
+    </div>`;
+  }).join("");
+}
+
+$("seg").addEventListener("click", e => {
+  const b = e.target.closest("button");
+  if (!b) return;
+  LG = b.dataset.lg;
+  [...$("seg").children].forEach(c => c.classList.toggle("on", c === b));
+  if (STATS) renderLeague();
+});
+
+$("refresh").addEventListener("click", boot);
 boot();
 </script>
 </body>
