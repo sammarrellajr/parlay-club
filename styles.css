@@ -16,6 +16,8 @@
   --loss-bg: #351511;
   --loss-soft: #ffc0b6;
   --gold: #ffc94d;
+  --gold-bg: #3a2d0a;
+  --gold-soft: #ffd970;
   --r: 14px;
   --font: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Inter, Roboto, sans-serif;
   --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
@@ -199,7 +201,7 @@ button { touch-action: manipulation; }
   margin: 0;
 }
 
-.sec-head .note { font-size: 12px; color: var(--dim); }
+.sec-head .note { font-size: 12px; color: var(--dim); text-align: right; }
 
 /* ---------- player rows ---------- */
 
@@ -294,6 +296,7 @@ button { touch-action: manipulation; }
 }
 .dot.w { background: var(--accent-bg); color: var(--accent-soft); }
 .dot.l { background: var(--loss-bg); color: var(--loss-soft); }
+.dot.p { background: var(--gold-bg); color: var(--gold-soft); }
 .dot.none { background: var(--panel-2); color: var(--dim); }
 
 .nodata { font-size: 12px; color: var(--dim); }
@@ -383,6 +386,16 @@ button { touch-action: manipulation; }
   background: var(--accent);
   border-radius: 5px;
   padding: 2px 6px;
+}
+
+.pend-chip {
+  font-size: 10px;
+  font-weight: 750;
+  color: var(--gold-soft);
+  background: var(--gold-bg);
+  border-radius: 5px;
+  padding: 2px 6px;
+  white-space: nowrap;
 }
 
 /* ---------- misc ---------- */
@@ -489,7 +502,7 @@ input:focus { outline: none; border-color: #3f7dd6; box-shadow: 0 0 0 3px rgba(6
   flex: none;
 }
 
-.wl { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; flex: 1; }
+.wl { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 7px; flex: 1; }
 
 .wl button {
   height: 42px;
@@ -506,6 +519,8 @@ input:focus { outline: none; border-color: #3f7dd6; box-shadow: 0 0 0 3px rgba(6
 .wl button:active { transform: scale(0.96); }
 .wl button.on-w { background: var(--accent); border-color: var(--accent); color: #05180d; }
 .wl button.on-l { background: var(--loss); border-color: var(--loss); color: #2a0603; }
+.wl button.pend { font-size: 12px; letter-spacing: 0.5px; }
+.wl button.on-p { background: var(--gold); border-color: var(--gold); color: #241a02; }
 
 .pick-in { margin-top: 7px; }
 .pick-in input { font-size: 15px; padding: 9px 11px; min-height: 40px; }
