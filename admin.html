@@ -237,6 +237,7 @@ function buildForm(week) {
 
 function readForm() {
   const entries = {};
+  const missing = [];
   let marked = 0;
   $("entries").querySelectorAll(".entry-row").forEach(row => {
     const player = row.dataset.player;
@@ -246,12 +247,12 @@ function readForm() {
       const on = wl.querySelector(".on-w, .on-l");
       const result = on ? on.dataset.v : null;
       const pick = row.querySelector(`.pick[data-league="${lg.key}"]`).value.trim();
-      if (result) marked++;
+      if (result) marked++; else missing.push(player + " " + lg.label);
       obj[lg.key] = { result: result, pick: pick };
     });
     entries[player] = obj;
   });
-  return { entries, marked };
+  return { entries, marked, missing };
 }
 
 function defaultDates() {
@@ -284,8 +285,14 @@ $("save").addEventListener("click", async () => {
   const start = $("start").value;
   const label = $("label").value.trim() || weekendLabel(start, $("end").value) || "Untitled week";
   if (!start) { say("err", "Pick a start date."); return; }
-  const { entries, marked } = readForm();
+  const { entries, marked, missing } = readForm();
   if (marked === 0) { say("err", "Nothing marked. Tap W or L for at least one pick."); return; }
+  if (missing.length) {
+    const ok = confirm(missing.length + " pick" + (missing.length === 1 ? " is" : "s are") +
+      " still blank:\n\n" + missing.join("\n") +
+      "\n\nBlank picks count toward nobody's record. Save anyway?");
+    if (!ok) return;
+  }
 
   const id = EDITING || start;
   const week = { id, label, start, end: $("end").value, entries };
