@@ -83,7 +83,7 @@ function blankRec() { return { w: 0, l: 0 }; }
 function computeStats(data) {
   const per = {};
   data.players.forEach(p => {
-    per[p] = { name: p, cfb: blankRec(), nfl: blankRec(), all: blankRec(), history: [] };
+    per[p] = { name: p, cfb: blankRec(), nfl: blankRec(), all: blankRec(), history: [], seq: { cfb: [], nfl: [] } };
   });
 
   const group = { cfb: blankRec(), nfl: blankRec(), all: blankRec() };
@@ -98,6 +98,7 @@ function computeStats(data) {
         const leg = e[lg.key] || {};
         const res = leg.result === "W" ? "W" : leg.result === "L" ? "L" : null;
         marks.push(res);
+        per[p].seq[lg.key].push(res);
         if (!res) { summary.perfect = false; return; }
         const bucket = res === "W" ? "w" : "l";
         per[p][lg.key][bucket] += 1;
@@ -119,7 +120,8 @@ function computeStats(data) {
       ...s,
       cfbPct: pct(s.cfb),
       nflPct: pct(s.nfl),
-      allPct: pct(s.all)
+      allPct: pct(s.all),
+      streak: { cfb: winStreak(s.seq.cfb), nfl: winStreak(s.seq.nfl) }
     };
   });
 
@@ -127,12 +129,67 @@ function computeStats(data) {
 
   return {
     rows,
+    byLeague: {
+      cfb: rankBy(rows, "cfbPct", "cfb"),
+      nfl: rankBy(rows, "nflPct", "nfl")
+    },
+    leaders: {
+      cfb: findLeaders(rows, "cfbPct", "cfb"),
+      nfl: findLeaders(rows, "nflPct", "nfl")
+    },
     group,
     groupPct: { cfb: pct(group.cfb), nfl: pct(group.nfl), all: pct(group.all) },
     weekSummaries,
     perfectWeeks: weekSummaries.filter(w => w.counted > 0 && w.perfect).length,
     weeksLogged: data.weeks.length
   };
+}
+
+/* Consecutive wins ending at the most recent decided week. Blank weeks are
+   skipped rather than treated as a loss, so a missed pick does not kill a run. */
+function winStreak(seq) {
+  let n = 0;
+  for (let i = seq.length - 1; i >= 0; i--) {
+    if (seq[i] === null) continue;
+    if (seq[i] === "W") n++; else break;
+  }
+  return n;
+}
+
+function rankBy(rows, pctKey, recKey) {
+  return rows.slice().sort((a, b) =>
+    (b[pctKey] - a[pctKey]) ||
+    (b[recKey].w - a[recKey].w) ||
+    a.name.localeCompare(b.name));
+}
+
+/* Everyone tied at the best win percentage in that league. */
+function findLeaders(rows, pctKey, recKey) {
+  const played = rows.filter(r => r[recKey].w + r[recKey].l > 0);
+  if (!played.length) return null;
+  const best = played.reduce((m, r) => Math.max(m, r[pctKey]), -1);
+  const tied = played.filter(r => r[pctKey] === best);
+  const sameRec = tied.every(r => r[recKey].w === tied[0][recKey].w && r[recKey].l === tied[0][recKey].l);
+  return {
+    names: tied.map(r => r.name),
+    pct: best,
+    rec: sameRec ? tied[0][recKey] : null
+  };
+}
+
+/* "Drew" / "Drew & Sam" / "3-way tie" */
+function leaderLabel(ld) {
+  if (!ld) return "--";
+  if (ld.names.length === 1) return ld.names[0];
+  if (ld.names.length === 2) return ld.names[0] + " & " + ld.names[1];
+  return ld.names.length + "-way tie";
+}
+
+function leaderFoot(ld) {
+  if (!ld) return "No results yet";
+  const pctText = (ld.pct * 100).toFixed(1) + "%";
+  const base = ld.rec ? fmtRec(ld.rec) + " (" + pctText + ")" : pctText;
+  return ld.names.length > 2 ? base + ": " + ld.names.join(", ") : base;
 }
 
 function pct(rec) {
@@ -153,8 +210,6 @@ function pctClass(v, rec) {
   if (v < 0.5) return "bad";
   return "even";
 }
-
-function unitsClass(n) { return n > 0 ? "good" : n < 0 ? "bad" : "even"; }
 
 /* ---------- label helpers ---------- */
 
