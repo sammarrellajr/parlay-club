@@ -330,8 +330,15 @@ function suggestPicks(query, data, limit) {
 }
 
 /* Split a pasted slip into individual picks.
-   Prefers line breaks; falls back to commas when it is all one line. */
-const PASTE_NOISE = /^(spread|total|totals|moneyline|money line|ml|parlay|parlay boost ineligible|open|pending|won|lost|boost applied.*)$/i;
+   Prefers line breaks; falls back to commas when it is all one line.
+
+   Real slips interleave the picks with labels ("Spread"), odds ("-110"),
+   and venue lines that arrive as a bare "@" followed by "Atlanta, GA".
+   Rather than blacklist every variant, keep only lines that actually look
+   like a pick: they contain letters, and they are not a label or a place. */
+const PASTE_NOISE = /^(spread|total|totals|moneyline|money line|straight|parlay|same game parlay|sgp|parlay boost ineligible|boost applied.*|open|pending|live|won|win|lost|loss|push|void|cashed out|cash out|to win|to pay|wager|bet slip|\d+ pick parlay)$/i;
+
+const VENUE = /^@|^[A-Za-z .'&-]+,\s*[A-Z]{2}\.?$/;   // "@", "@ Atlanta, GA", "Atlanta, GA"
 
 function parsePastedPicks(text) {
   if (!text) return [];
@@ -339,15 +346,70 @@ function parsePastedPicks(text) {
   if (parts.length < 2) parts = text.split(",").map(t => t.trim()).filter(Boolean);
 
   return parts
-    .map(t => t
-      .replace(/^[\-•*\d]+[.)\s]+/, "")   // strip bullets and "1." numbering
-      .replace(/\s+/g, " ")
-      .trim())
-    .filter(t => t &&
+    .map(cleanPickLine)
+    .filter(t =>
+      t &&
+      /[a-z]/i.test(t) &&              // a pick always has letters; "@" and "-110" do not
       !PASTE_NOISE.test(t) &&
-      !/^[+-]\d{3,4}$/.test(t) &&                // bare odds like -110
-      !/^@\s/.test(t) &&                         // venue lines
-      !/^\$/.test(t));
+      !VENUE.test(t));
+}
+
+function cleanPickLine(t) {
+  return t
+    .replace(/^[•*]+\s*/, "")          // bullets
+    .replace(/^\d+[.)]\s+/, "")             // "1." numbering
+    .replace(/\s+/g, " ")
+    .replace(/([+-])\s+(?=[\d.])/g, "$1")   // "Pittsburgh - 16.5" -> "Pittsburgh -16.5"
+    .replace(/\s+([ou])\s*(?=[\d.])/i, " $1")
+    .trim();
+}
+
+/* ---------- assigning picks to people ---------- */
+
+/* The name part of a pick, with the numbers dropped: "Penn State -17" -> "penn state" */
+function teamKey(text) {
+  return String(text || "")
+    .split(/\s+/)
+    .filter(w => !/\d/.test(w))
+    .join(" ")
+    .toLowerCase()
+    .replace(/[^a-z ]/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+/* Who usually takes this team? Returns null when there is no history for it. */
+function guessPlayer(text, data) {
+  if (!data) return null;
+  const key = teamKey(text);
+  if (!key) return null;
+  const counts = {};
+  data.entries.forEach(e => data.players.forEach(p => {
+    const prior = (e.picks[p] || {}).pick;
+    if (prior && teamKey(prior) === key) counts[p] = (counts[p] || 0) + 1;
+  }));
+  let best = null;
+  Object.keys(counts).forEach(p => { if (!best || counts[p] > counts[best]) best = p; });
+  return best;
+}
+
+/* History first, then roster order for whoever is left. One pick per person. */
+function autoAssign(picks, players, data) {
+  const used = new Set();
+  const out = picks.map(() => null);
+
+  picks.forEach((t, i) => {
+    const g = guessPlayer(t, data);
+    if (g && players.includes(g) && !used.has(g)) { out[i] = g; used.add(g); }
+  });
+
+  picks.forEach((t, i) => {
+    if (out[i]) return;
+    const free = players.find(p => !used.has(p));
+    if (free) { out[i] = free; used.add(free); }
+  });
+
+  return out;
 }
 
 function esc(s) {
