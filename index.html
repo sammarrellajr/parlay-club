@@ -12,6 +12,45 @@
 <link rel="icon" href="1A11D967-A164-4882-93CB-DDBCDE1E5593.png">
 <title>Parlay Club</title>
 <link rel="stylesheet" href="styles.css">
+<style>
+/* The All tab: both records on one row, tap a row for that person's weeks. */
+.seg { grid-template-columns: 1fr 1fr 1fr; }
+
+.prow.all { display: block; cursor: pointer; }
+.prow.all .ptop { display: flex; align-items: center; gap: 11px; }
+
+.pchev {
+  color: var(--dim); font-size: 11px; flex: none;
+  transition: transform 0.18s;
+}
+.prow.all.open .pchev { transform: rotate(90deg); }
+
+.split { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; margin-top: 10px; }
+.sp {
+  display: flex; align-items: baseline; justify-content: space-between; gap: 6px;
+  background: var(--panel-2); border: 1px solid var(--line);
+  border-radius: 10px; padding: 7px 10px; min-width: 0;
+}
+.spl {
+  font-size: 10px; font-weight: 750; letter-spacing: 0.6px;
+  text-transform: uppercase; color: var(--dim); white-space: nowrap;
+}
+.spr { font-size: 15px; font-weight: 750; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.spr.good { color: var(--accent); }
+.spr.bad { color: var(--loss); }
+.spr.even { color: var(--text); }
+.spr.none { color: var(--dim); }
+
+.pdet { display: none; margin-top: 11px; border-top: 1px solid var(--line); padding-top: 9px; }
+.prow.all.open .pdet { display: block; }
+.drow { display: flex; align-items: center; gap: 9px; padding: 4px 0; }
+.dwk { font-size: 11px; color: var(--dim); width: 82px; flex: none; white-space: nowrap; }
+.dpk {
+  font-size: 12.5px; color: var(--muted); flex: 1; min-width: 0;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.dpk.blank { color: var(--dim); font-style: italic; }
+</style>
 </head>
 <body>
 <div class="app">
@@ -28,7 +67,8 @@
       </div>
     </div>
     <div class="seg" id="seg">
-      <button data-lg="cfb" class="on">College</button>
+      <button data-lg="all" class="on">All</button>
+      <button data-lg="cfb">College</button>
       <button data-lg="nfl">NFL</button>
     </div>
   </div>
@@ -56,7 +96,8 @@
 <script>
 let DATA = null;
 let STATS = null;
-let LG = "cfb";
+let LG = "all";
+let OPEN = null;        // name of the expanded row in the All view
 
 const $ = id => document.getElementById(id);
 
@@ -104,20 +145,23 @@ async function boot(quiet) {
 // Coming back to the app from the Home Screen should show current numbers.
 document.addEventListener("visibilitychange", () => { if (!document.hidden) boot(true); });
 
+const LG_NAME = { all: "Overall", cfb: "College Football", nfl: "NFL" };
+const TILE_LAB = { all: "Group overall", cfb: "Group college", nfl: "Group NFL" };
+
 function render() {
   const key = LG;
-  const name = key === "cfb" ? "College" : "NFL";
   const rec = STATS.group[key];
-  const gp = key === "cfb" ? STATS.groupPct.cfb : STATS.groupPct.nfl;
+  const gp = STATS.groupPct[key];
   const ld = STATS.leaders[key];
   const rows = STATS.byLeague[key];
   const n = STATS.counts[key];
 
   $("tiles").innerHTML =
     `<div class="tile">
-       <div class="lab">Group ${key === "cfb" ? "college" : "NFL"}</div>
+       <div class="lab">${TILE_LAB[key]}</div>
        <div class="val">${fmtRec(rec)}</div>
-       <div class="foot">${fmtPct(gp, rec)} &middot; ${n} week${n === 1 ? "" : "s"}</div>
+       <div class="foot">${fmtPct(gp, rec)} &middot; ${n} ${
+         key === "all" ? (n === 1 ? "entry" : "entries") : (n === 1 ? "week" : "weeks")}</div>
      </div>
      <div class="tile">
        <div class="lab">Leader</div>
@@ -125,13 +169,15 @@ function render() {
        <div class="foot">${esc(leaderFoot(ld))}</div>
      </div>`;
 
-  $("secTitle").textContent = key === "cfb" ? "College Football" : "NFL";
+  $("secTitle").textContent = LG_NAME[key];
   const hot = rows.filter(r => r.streak[key] >= 2).length;
   const pend = STATS.pending[key];
   $("secNote").textContent = [
     hot ? hot + " on a streak" : "",
     pend ? pend + " pending" : ""
   ].filter(Boolean).join(" · ");
+
+  if (key === "all") { renderAll(rows); renderHistory("all", "Overall"); return; }
 
   $("rows").innerHTML = rows.map((r, i) => {
     const rc = r[key];
@@ -155,7 +201,75 @@ function render() {
     </div>`;
   }).join("");
 
-  renderHistory(key, name);
+  renderHistory(key, key === "cfb" ? "College" : "NFL");
+}
+
+/* One row per person carrying both records, expandable to their own weeks. */
+function renderAll(rows) {
+  $("rows").innerHTML = rows.map((r, i) => {
+    const played = r.all.w + r.all.l;
+    const lead = i === 0 && played > 0;
+    const st = r.streak.all;
+    const sub = played
+      ? (st >= 2 ? `<span class="streak">${st} straight</span>` : "") + dots(r.seq.all)
+      : '<span class="nodata">No results yet</span>';
+
+    const half = (lab, rc, p) => `<div class="sp">
+        <span class="spl">${lab}</span>
+        <span class="spr ${rc.w + rc.l ? pctClass(p, rc) : "none"}">${
+          rc.w + rc.l ? fmtRec(rc) : "&mdash;"}</span>
+      </div>`;
+
+    return `<div class="prow all${lead ? " lead" : ""}${OPEN === r.name ? " open" : ""}" data-nm="${esc(r.name)}">
+      <div class="ptop">
+        <div class="pnum">${i + 1}</div>
+        <div class="pmain">
+          <div class="pnm">${esc(r.name)}${lead ? '<span class="crown">&#9733;</span>' : ""}</div>
+          <div class="psub">${sub}</div>
+        </div>
+        <div class="pright">
+          <div class="prec">${fmtRec(r.all)}</div>
+          <div class="ppct ${pctClass(r.allPct, r.all)}">${fmtPct(r.allPct, r.all)}</div>
+        </div>
+        <span class="pchev">&#9654;</span>
+      </div>
+      <div class="split">
+        ${half("College", r.cfb, r.cfbPct)}
+        ${half("NFL", r.nfl, r.nflPct)}
+      </div>
+      <div class="pdet">${personWeeks(r.name)}</div>
+    </div>`;
+  }).join("");
+
+  $("rows").querySelectorAll(".prow.all").forEach(row => {
+    row.addEventListener("click", () => {
+      const nm = row.dataset.nm;
+      OPEN = OPEN === nm ? null : nm;
+      $("rows").querySelectorAll(".prow.all").forEach(x =>
+        x.classList.toggle("open", x.dataset.nm === OPEN));
+    });
+  });
+}
+
+/* Everything one person has logged, newest first, both leagues. */
+function personWeeks(name) {
+  const mine = DATA.entries.slice().reverse().filter(e => {
+    const v = e.picks[name] || {};
+    return v.result || v.pick;
+  });
+  if (!mine.length) return '<div class="nodata">Nothing logged for them yet.</div>';
+
+  return mine.map(e => {
+    const v = e.picks[name] || {};
+    const cls = v.result === "W" ? "w" : v.result === "L" ? "l" : v.result === "P" ? "p" : "none";
+    const mark = v.result || "-";
+    const when = e.label.replace(/ College| NFL/, "") + (e.league === "cfb" ? " C" : " N");
+    return `<div class="drow">
+      <span class="dwk">${esc(when)}</span>
+      <span class="dot ${cls}">${mark}</span>
+      <span class="dpk${v.pick ? "" : " blank"}">${esc(v.pick || "no pick logged")}</span>
+    </div>`;
+  }).join("");
 }
 
 function dots(seq) {
@@ -167,11 +281,13 @@ function dots(seq) {
 
 function renderHistory(key, name) {
   const el = $("hist");
-  const list = DATA.entries.filter(e => e.league === key);
-  $("histTitle").textContent = name + " history";
+  const list = key === "all" ? DATA.entries.slice() : DATA.entries.filter(e => e.league === key);
+  $("histTitle").textContent = key === "all" ? "Every entry" : name + " history";
 
   if (!list.length) {
-    el.innerHTML = `<div class="empty">No ${name} results logged yet.<br>Tap Admin to add the first one.</div>`;
+    el.innerHTML = key === "all"
+      ? '<div class="empty">Nothing logged yet.<br>Tap Admin to add the first one.</div>'
+      : `<div class="empty">No ${name} results logged yet.<br>Tap Admin to add the first one.</div>`;
     $("histNote").textContent = "";
     return;
   }
@@ -206,6 +322,7 @@ $("seg").addEventListener("click", e => {
   const b = e.target.closest("button");
   if (!b) return;
   LG = b.dataset.lg;
+  OPEN = null;
   [...$("seg").children].forEach(c => c.classList.toggle("on", c === b));
   if (STATS) render();
 });
