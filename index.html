@@ -25,20 +25,37 @@
   <div class="tiles" id="tiles"></div>
 
   <div class="card">
-    <h2>Standings</h2>
-    <p class="sub">Ranked by overall win percentage across all picks.</p>
+    <h2>College Football</h2>
+    <p class="sub" id="cfbSub"></p>
     <div style="overflow-x:auto">
-      <table id="standings">
+      <table id="cfbTable">
         <thead>
           <tr>
             <th></th>
             <th>Player</th>
-            <th class="num">College</th>
-            <th class="num hide-sm">College %</th>
-            <th class="num">NFL</th>
-            <th class="num hide-sm">NFL %</th>
-            <th class="num">Overall</th>
+            <th class="num">Record</th>
             <th class="num">Win %</th>
+            <th>Streak</th>
+            <th class="hide-sm">Last 5</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>NFL</h2>
+    <p class="sub" id="nflSub"></p>
+    <div style="overflow-x:auto">
+      <table id="nflTable">
+        <thead>
+          <tr>
+            <th></th>
+            <th>Player</th>
+            <th class="num">Record</th>
+            <th class="num">Win %</th>
+            <th>Streak</th>
             <th class="hide-sm">Last 5</th>
           </tr>
         </thead>
@@ -49,7 +66,7 @@
 
   <div class="card">
     <h2>Week by week</h2>
-    <p class="sub">Click a week to see every pick.</p>
+    <p class="sub">Click an entry to see every pick.</p>
     <div id="weeks"></div>
   </div>
 
@@ -77,83 +94,99 @@ function render() {
   const stats = computeStats(DATA);
   document.getElementById("season").textContent = DATA.season ? DATA.season + " Season" : "";
 
-  // Tiles
   const g = stats.group, gp = stats.groupPct;
+  const wk = stats.weeksLogged + " entr" + (stats.weeksLogged === 1 ? "y" : "ies");
+
   document.getElementById("tiles").innerHTML = [
-    tile("Group record", fmtRec(g.all), fmtPct(gp.all, g.all) + " across " + stats.weeksLogged + " week" + (stats.weeksLogged === 1 ? "" : "s")),
-    tile("Group college", fmtRec(g.cfb), fmtPct(gp.cfb, g.cfb)),
-    tile("Group NFL", fmtRec(g.nfl), fmtPct(gp.nfl, g.nfl)),
-    tile("Leader", stats.rows.length && stats.rows[0].all.w + stats.rows[0].all.l ? stats.rows[0].name : "--",
-         stats.rows.length && stats.rows[0].all.w + stats.rows[0].all.l
-           ? fmtRec(stats.rows[0].all) + " (" + fmtPct(stats.rows[0].allPct, stats.rows[0].all) + ")" : "No results yet"),
-    tile("Clean sweeps", String(stats.perfectWeeks), "Weeks all 10 picks hit")
+    tile("Group college", fmtRec(g.cfb), fmtPct(gp.cfb, g.cfb) + " across " + wk),
+    tile("Group NFL", fmtRec(g.nfl), fmtPct(gp.nfl, g.nfl) + " across " + wk),
+    tile("College leader", leaderLabel(stats.leaders.cfb), leaderFoot(stats.leaders.cfb), true),
+    tile("NFL leader", leaderLabel(stats.leaders.nfl), leaderFoot(stats.leaders.nfl), true)
   ].join("");
 
-  // Standings
-  const tb = document.querySelector("#standings tbody");
-  tb.innerHTML = stats.rows.map((r, i) => {
-    const played = r.all.w + r.all.l;
-    const crown = i === 0 && played > 0 ? '<span class="crown">&#9733;</span>' : "";
-    return `<tr>
-      <td class="rank">${i + 1}</td>
-      <td class="pname">${esc(r.name)}${crown}</td>
-      <td class="num rec">${fmtRec(r.cfb)}</td>
-      <td class="num pct hide-sm ${pctClass(r.cfbPct, r.cfb)}">${fmtPct(r.cfbPct, r.cfb)}</td>
-      <td class="num rec">${fmtRec(r.nfl)}</td>
-      <td class="num pct hide-sm ${pctClass(r.nflPct, r.nfl)}">${fmtPct(r.nflPct, r.nfl)}</td>
-      <td class="num rec">${fmtRec(r.all)}</td>
-      <td class="num pct ${pctClass(r.allPct, r.all)}">${fmtPct(r.allPct, r.all)}</td>
-      <td class="hide-sm">${formDots(r.history)}</td>
-    </tr>`;
-  }).join("");
+  leagueTable("cfbTable", stats.byLeague.cfb, "cfb");
+  leagueTable("nflTable", stats.byLeague.nfl, "nfl");
 
-  // Weeks (newest first)
-  const weeksEl = document.getElementById("weeks");
-  if (!DATA.weeks.length) {
-    weeksEl.innerHTML = '<div class="empty">No weeks logged yet. Head to Admin to add the first one.</div>';
-  } else {
-    const summaries = {};
-    stats.weekSummaries.forEach(s => summaries[s.id] = s);
-    weeksEl.innerHTML = DATA.weeks.slice().reverse().map((w, idx) => {
-      const s = summaries[w.id] || { w: 0, l: 0 };
-      const body = DATA.players.map(p => {
-        const e = w.entries[p] || {};
-        const legs = LEAGUES.map(lg => {
-          const leg = e[lg.key] || {};
-          const res = leg.result === "W" ? "w" : leg.result === "L" ? "l" : "none";
-          const mark = res === "none" ? "-" : leg.result;
-          const pick = leg.pick
-            ? `<span class="pk" title="${esc(leg.pick)}">${esc(leg.pick)}</span>`
-            : `<span class="pk blank">no pick logged</span>`;
-          return `<div class="wk-leg"><span class="dot ${res}">${mark}</span><span class="lg">${lg.label}</span>${pick}</div>`;
-        }).join("");
-        return `<div class="wk-row"><div class="wk-name">${esc(p)}</div><div class="wk-legs">${legs}</div></div>`;
-      }).join("");
-      return `<div class="week${idx === 0 ? " open" : ""}">
-        <div class="week-head" onclick="this.parentNode.classList.toggle('open')">
-          <span class="week-title">${esc(w.label)}</span>
-          <span class="week-meta">${s.w}-${s.l} group${s.counted && s.perfect ? " &nbsp;&#9733; sweep" : ""}</span>
-        </div>
-        <div class="week-body">${body}</div>
-      </div>`;
-    }).join("");
-  }
+  document.getElementById("cfbSub").textContent = subLine(stats.byLeague.cfb, "cfb");
+  document.getElementById("nflSub").textContent = subLine(stats.byLeague.nfl, "nfl");
 
+  renderWeeks(stats);
   document.getElementById("foot").textContent = "Updated from results.json";
 }
 
-function tile(label, value, foot) {
-  return `<div class="tile"><div class="label">${esc(label)}</div><div class="value">${esc(value)}</div><div class="foot">${foot}</div></div>`;
+function subLine(rows, key) {
+  const hot = rows.filter(r => r.streak[key] >= 2);
+  if (!hot.length) return "Ranked by win percentage. Nobody is on a streak.";
+  const names = hot.map(r => r.name + " (" + r.streak[key] + ")");
+  return "Ranked by win percentage. On a streak: " + names.join(", ");
 }
 
-function formDots(history) {
-  const marks = [];
-  history.forEach(h => h.marks.forEach(m => marks.push(m)));
-  const last = marks.slice(-5);
+function leagueTable(id, rows, key) {
+  const tb = document.querySelector("#" + id + " tbody");
+  tb.innerHTML = rows.map((r, i) => {
+    const rec = r[key];
+    const p = key === "cfb" ? r.cfbPct : r.nflPct;
+    const played = rec.w + rec.l;
+    const crown = i === 0 && played > 0 ? '<span class="crown">&#9733;</span>' : "";
+    const n = r.streak[key];
+    const streak = n >= 2
+      ? `<span class="streak">${n} straight</span>`
+      : '<span class="pickline">--</span>';
+    return `<tr>
+      <td class="rank">${i + 1}</td>
+      <td class="pname">${esc(r.name)}${crown}</td>
+      <td class="num rec">${fmtRec(rec)}</td>
+      <td class="num pct ${pctClass(p, rec)}">${fmtPct(p, rec)}</td>
+      <td>${streak}</td>
+      <td class="hide-sm">${formDots(r.seq[key])}</td>
+    </tr>`;
+  }).join("");
+}
+
+function renderWeeks(stats) {
+  const weeksEl = document.getElementById("weeks");
+  if (!DATA.weeks.length) {
+    weeksEl.innerHTML = '<div class="empty">Nothing logged yet. Head to Admin to add the first entry.</div>';
+    return;
+  }
+  const summaries = {};
+  stats.weekSummaries.forEach(s => summaries[s.id] = s);
+  weeksEl.innerHTML = DATA.weeks.slice().reverse().map((w, idx) => {
+    const s = summaries[w.id] || { w: 0, l: 0 };
+    const body = DATA.players.map(p => {
+      const e = w.entries[p] || {};
+      const legs = LEAGUES.map(lg => {
+        const leg = e[lg.key] || {};
+        const res = leg.result === "W" ? "w" : leg.result === "L" ? "l" : "none";
+        const mark = res === "none" ? "-" : leg.result;
+        const pick = leg.pick
+          ? `<span class="pk" title="${esc(leg.pick)}">${esc(leg.pick)}</span>`
+          : `<span class="pk blank">no pick logged</span>`;
+        return `<div class="wk-leg"><span class="dot ${res}">${mark}</span><span class="lg">${lg.label}</span>${pick}</div>`;
+      }).join("");
+      return `<div class="wk-row"><div class="wk-name">${esc(p)}</div><div class="wk-legs">${legs}</div></div>`;
+    }).join("");
+    return `<div class="week${idx === 0 ? " open" : ""}">
+      <div class="week-head" onclick="this.parentNode.classList.toggle('open')">
+        <span class="week-title">${esc(w.label)}</span>
+        <span class="week-meta">${s.w}-${s.l} group${s.counted && s.perfect ? " &nbsp;&#9733; sweep" : ""}</span>
+      </div>
+      <div class="week-body">${body}</div>
+    </div>`;
+  }).join("");
+}
+
+function tile(label, value, foot, small) {
+  return `<div class="tile${small ? " small" : ""}"><div class="label">${esc(label)}</div>` +
+         `<div class="value">${esc(value)}</div><div class="foot">${esc(foot)}</div></div>`;
+}
+
+function formDots(seq) {
+  const last = (seq || []).filter(m => m !== null).slice(-5);
   if (!last.length) return '<span class="pickline">--</span>';
   return '<div class="form-dots">' + last.map(m => {
-    const c = m === "W" ? "w" : m === "L" ? "l" : "none";
-    return `<span class="dot ${c}">${m || "-"}</span>`;
+    const c = m === "W" ? "w" : "l";
+    return `<span class="dot ${c}">${m}</span>`;
   }).join("") + "</div>";
 }
 
