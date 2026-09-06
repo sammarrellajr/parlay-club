@@ -1,18 +1,21 @@
-/* Shared config, data loading, and stats for the Parlay Club dashboard. */
+/* Shared config, data loading, and stats for the Parlay Club app. */
 
 // Optional manual override. Leave blank to auto-detect from the GitHub Pages URL.
 const CONFIG = {
-  owner: "",   // e.g. "sammarrella"
-  repo: "",    // e.g. "parlay-club"
+  owner: "",
+  repo: "",
   branch: "main",
   file: "results.json"
 };
 
 const DEFAULT_PLAYERS = ["Drew", "Pat", "Sam", "Tim", "Tyler"];
+
 const LEAGUES = [
-  { key: "cfb", label: "College", full: "College Football" },
-  { key: "nfl", label: "NFL", full: "NFL" }
+  { key: "cfb", label: "College", full: "College Football", dow: 6 }, // Saturday
+  { key: "nfl", label: "NFL", full: "NFL", dow: 0 }                   // Sunday
 ];
+
+const DOW = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
 /* ---------- repo detection ---------- */
 
@@ -20,12 +23,10 @@ function detectRepo() {
   if (CONFIG.owner && CONFIG.repo) {
     return { owner: CONFIG.owner, repo: CONFIG.repo, branch: CONFIG.branch };
   }
-  const host = location.hostname || "";
-  const m = host.match(/^([^.]+)\.github\.io$/i);
+  const m = (location.hostname || "").match(/^([^.]+)\.github\.io$/i);
   if (m) {
     const owner = m[1];
     const seg = location.pathname.split("/").filter(Boolean);
-    // Project page: owner.github.io/repo/...  User page: owner.github.io/...
     const repo = seg.length && !seg[0].endsWith(".html") ? seg[0] : `${owner}.github.io`;
     return { owner, repo, branch: CONFIG.branch };
   }
@@ -62,18 +63,76 @@ async function loadResults() {
   throw lastErr || new Error("Could not load results.json");
 }
 
+/* One entry = one date + one league. Older files stored a combined
+   weekend holding both leagues, so those are split on read. */
 function normalize(data) {
   const d = data && typeof data === "object" ? data : {};
   const players = Array.isArray(d.players) && d.players.length ? d.players : DEFAULT_PLAYERS.slice();
-  const weeks = (Array.isArray(d.weeks) ? d.weeks : []).map(w => ({
-    id: w.id || w.label || Math.random().toString(36).slice(2),
-    label: w.label || w.id || "Untitled week",
-    start: w.start || "",
-    end: w.end || "",
-    entries: w.entries && typeof w.entries === "object" ? w.entries : {}
-  }));
-  weeks.sort((a, b) => String(a.start || a.id).localeCompare(String(b.start || b.id)));
-  return { players, season: d.season || "", weeks };
+
+  let entries = [];
+  if (Array.isArray(d.entries)) {
+    entries = d.entries.map(cleanEntry).filter(Boolean);
+  } else if (Array.isArray(d.weeks)) {
+    d.weeks.forEach(w => {
+      LEAGUES.forEach(lg => {
+        const picks = {};
+        let any = false;
+        Object.keys(w.entries || {}).forEach(p => {
+          const leg = (w.entries[p] || {})[lg.key] || {};
+          if (leg.result || leg.pick) {
+            picks[p] = { result: leg.result || null, pick: leg.pick || "" };
+            if (leg.result) any = true;
+          }
+        });
+        if (any) {
+          const date = w.start || "";
+          entries.push(cleanEntry({ id: date + "-" + lg.key, date, league: lg.key, picks }));
+        }
+      });
+    });
+  }
+
+  entries.sort((a, b) => a.date.localeCompare(b.date) || a.id.localeCompare(b.id));
+
+  // Derive labels for entries that carry none, numbering repeats on one date.
+  const seen = {};
+  entries.forEach(e => {
+    const k = e.date + "-" + e.league;
+    seen[k] = (seen[k] || 0) + 1;
+    if (!e.label) {
+      e.label = entryLabel(e.date, e.league) + (seen[k] > 1 ? " #" + seen[k] : "");
+    }
+  });
+
+  return { players, season: d.season || "", entries };
+}
+
+function cleanEntry(e) {
+  if (!e || typeof e !== "object") return null;
+  const league = e.league === "nfl" ? "nfl" : "cfb";
+  const date = e.date || "";
+  const picks = {};
+  Object.keys(e.picks || {}).forEach(p => {
+    const v = e.picks[p] || {};
+    picks[p] = {
+      result: v.result === "W" ? "W" : v.result === "L" ? "L" : null,
+      pick: v.pick || ""
+    };
+  });
+  return {
+    id: e.id || (date + "-" + league),
+    date, league, picks,
+    label: e.label || ""   // filled in by normalize so repeats get numbered
+  };
+}
+
+/* "Sat 9/5 College" */
+function entryLabel(iso, league) {
+  const lg = league === "nfl" ? "NFL" : "College";
+  if (!iso) return lg;
+  const [y, m, d] = iso.split("-").map(Number);
+  if (!y || !m || !d) return lg;
+  return `${DOW[new Date(y, m - 1, d).getDay()]} ${m}/${d} ${lg}`;
 }
 
 /* ---------- stats ---------- */
@@ -83,35 +142,27 @@ function blankRec() { return { w: 0, l: 0 }; }
 function computeStats(data) {
   const per = {};
   data.players.forEach(p => {
-    per[p] = { name: p, cfb: blankRec(), nfl: blankRec(), all: blankRec(), history: [], seq: { cfb: [], nfl: [] } };
+    per[p] = { name: p, cfb: blankRec(), nfl: blankRec(), seq: { cfb: [], nfl: [] } };
   });
 
-  const group = { cfb: blankRec(), nfl: blankRec(), all: blankRec() };
-  const weekSummaries = [];
+  const group = { cfb: blankRec(), nfl: blankRec() };
+  const summaries = [];
 
-  data.weeks.forEach(week => {
-    const summary = { id: week.id, label: week.label, start: week.start, w: 0, l: 0, perfect: true, counted: 0 };
+  data.entries.forEach(e => {
+    const s = { id: e.id, label: e.label, league: e.league, date: e.date, w: 0, l: 0, counted: 0, perfect: true };
     data.players.forEach(p => {
-      const e = week.entries[p] || {};
-      const marks = [];
-      LEAGUES.forEach(lg => {
-        const leg = e[lg.key] || {};
-        const res = leg.result === "W" ? "W" : leg.result === "L" ? "L" : null;
-        marks.push(res);
-        per[p].seq[lg.key].push(res);
-        if (!res) { summary.perfect = false; return; }
-        const bucket = res === "W" ? "w" : "l";
-        per[p][lg.key][bucket] += 1;
-        per[p].all[bucket] += 1;
-        group[lg.key][bucket] += 1;
-        group.all[bucket] += 1;
-        summary[bucket] += 1;
-        summary.counted += 1;
-        if (res === "L") summary.perfect = false;
-      });
-      per[p].history.push({ weekId: week.id, label: week.label, marks });
+      const v = e.picks[p] || {};
+      const res = v.result === "W" ? "W" : v.result === "L" ? "L" : null;
+      per[p].seq[e.league].push(res);
+      if (!res) { s.perfect = false; return; }
+      const b = res === "W" ? "w" : "l";
+      per[p][e.league][b] += 1;
+      group[e.league][b] += 1;
+      s[b] += 1;
+      s.counted += 1;
+      if (res === "L") s.perfect = false;
     });
-    weekSummaries.push(summary);
+    summaries.push(s);
   });
 
   const rows = data.players.map(p => {
@@ -120,32 +171,25 @@ function computeStats(data) {
       ...s,
       cfbPct: pct(s.cfb),
       nflPct: pct(s.nfl),
-      allPct: pct(s.all),
       streak: { cfb: winStreak(s.seq.cfb), nfl: winStreak(s.seq.nfl) }
     };
   });
 
-  rows.sort((a, b) => (b.allPct - a.allPct) || (b.all.w - a.all.w) || a.name.localeCompare(b.name));
-
   return {
     rows,
-    byLeague: {
-      cfb: rankBy(rows, "cfbPct", "cfb"),
-      nfl: rankBy(rows, "nflPct", "nfl")
-    },
-    leaders: {
-      cfb: findLeaders(rows, "cfbPct", "cfb"),
-      nfl: findLeaders(rows, "nflPct", "nfl")
-    },
+    byLeague: { cfb: rankBy(rows, "cfbPct", "cfb"), nfl: rankBy(rows, "nflPct", "nfl") },
+    leaders: { cfb: findLeaders(rows, "cfbPct", "cfb"), nfl: findLeaders(rows, "nflPct", "nfl") },
     group,
-    groupPct: { cfb: pct(group.cfb), nfl: pct(group.nfl), all: pct(group.all) },
-    weekSummaries,
-    perfectWeeks: weekSummaries.filter(w => w.counted > 0 && w.perfect).length,
-    weeksLogged: data.weeks.length
+    groupPct: { cfb: pct(group.cfb), nfl: pct(group.nfl) },
+    summaries,
+    counts: {
+      cfb: data.entries.filter(e => e.league === "cfb").length,
+      nfl: data.entries.filter(e => e.league === "nfl").length
+    }
   };
 }
 
-/* Consecutive wins ending at the most recent decided week. Blank weeks are
+/* Consecutive wins ending at the most recent decided entry. Blank weeks are
    skipped rather than treated as a loss, so a missed pick does not kill a run. */
 function winStreak(seq) {
   let n = 0;
@@ -170,11 +214,7 @@ function findLeaders(rows, pctKey, recKey) {
   const best = played.reduce((m, r) => Math.max(m, r[pctKey]), -1);
   const tied = played.filter(r => r[pctKey] === best);
   const sameRec = tied.every(r => r[recKey].w === tied[0][recKey].w && r[recKey].l === tied[0][recKey].l);
-  return {
-    names: tied.map(r => r.name),
-    pct: best,
-    rec: sameRec ? tied[0][recKey] : null
-  };
+  return { names: tied.map(r => r.name), pct: best, rec: sameRec ? tied[0][recKey] : null };
 }
 
 /* "Drew" / "Drew & Sam" / "3-way tie" */
@@ -209,22 +249,6 @@ function pctClass(v, rec) {
   if (v > 0.5) return "good";
   if (v < 0.5) return "bad";
   return "even";
-}
-
-/* ---------- label helpers ---------- */
-
-function mdy(iso) {
-  if (!iso) return "";
-  const [y, m, d] = iso.split("-").map(Number);
-  if (!y || !m || !d) return "";
-  return `${m}/${d}`;
-}
-
-function weekendLabel(startIso, endIso) {
-  const a = mdy(startIso), b = mdy(endIso);
-  if (a && b) return `${a}-${b} Weekend`;
-  if (a) return `${a} Weekend`;
-  return "";
 }
 
 function esc(s) {
