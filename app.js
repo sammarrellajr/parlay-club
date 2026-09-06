@@ -115,7 +115,7 @@ function cleanEntry(e) {
   Object.keys(e.picks || {}).forEach(p => {
     const v = e.picks[p] || {};
     picks[p] = {
-      result: v.result === "W" ? "W" : v.result === "L" ? "L" : null,
+      result: ["W", "L", "P"].includes(v.result) ? v.result : null,   // P = pending
       pick: v.pick || ""
     };
   });
@@ -139,6 +139,20 @@ function entryLabel(iso, league) {
 
 function blankRec() { return { w: 0, l: 0 }; }
 
+function v_result(entry, player) {
+  return (entry.picks[player] || {}).result || null;
+}
+
+/* Count of picks still waiting on a game, per league. */
+function pendingCount(data, league) {
+  let n = 0;
+  data.entries.forEach(e => {
+    if (league && e.league !== league) return;
+    data.players.forEach(p => { if (v_result(e, p) === "P") n++; });
+  });
+  return n;
+}
+
 function computeStats(data) {
   const per = {};
   data.players.forEach(p => {
@@ -149,11 +163,13 @@ function computeStats(data) {
   const summaries = [];
 
   data.entries.forEach(e => {
-    const s = { id: e.id, label: e.label, league: e.league, date: e.date, w: 0, l: 0, counted: 0, perfect: true };
+    const s = { id: e.id, label: e.label, league: e.league, date: e.date, w: 0, l: 0, counted: 0, pending: 0, perfect: true };
     data.players.forEach(p => {
-      const v = e.picks[p] || {};
-      const res = v.result === "W" ? "W" : v.result === "L" ? "L" : null;
+      const raw = v_result(e, p);
+      // Pending and blank both sit out of the record and out of streaks.
+      const res = raw === "W" || raw === "L" ? raw : null;
       per[p].seq[e.league].push(res);
+      if (raw === "P") { s.pending += 1; s.perfect = false; return; }
       if (!res) { s.perfect = false; return; }
       const b = res === "W" ? "w" : "l";
       per[p][e.league][b] += 1;
@@ -185,12 +201,14 @@ function computeStats(data) {
     counts: {
       cfb: data.entries.filter(e => e.league === "cfb").length,
       nfl: data.entries.filter(e => e.league === "nfl").length
-    }
+    },
+    pending: { cfb: pendingCount(data, "cfb"), nfl: pendingCount(data, "nfl") }
   };
 }
 
-/* Consecutive wins ending at the most recent decided entry. Blank weeks are
-   skipped rather than treated as a loss, so a missed pick does not kill a run. */
+/* Consecutive wins ending at the most recent decided entry. Blank and pending
+   weeks are skipped rather than treated as a loss, so an unsettled leg does
+   not kill a run. */
 function winStreak(seq) {
   let n = 0;
   for (let i = seq.length - 1; i >= 0; i--) {
