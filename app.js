@@ -143,7 +143,7 @@ function v_result(entry, player) {
   return (entry.picks[player] || {}).result || null;
 }
 
-/* Count of picks still waiting on a game, per league. */
+/* Count of picks still waiting on a game. Omit the league to count both. */
 function pendingCount(data, league) {
   let n = 0;
   data.entries.forEach(e => {
@@ -153,13 +153,15 @@ function pendingCount(data, league) {
   return n;
 }
 
+/* Records are kept three ways: college, NFL, and the two combined. */
 function computeStats(data) {
   const per = {};
   data.players.forEach(p => {
-    per[p] = { name: p, cfb: blankRec(), nfl: blankRec(), seq: { cfb: [], nfl: [] } };
+    per[p] = { name: p, cfb: blankRec(), nfl: blankRec(), all: blankRec(),
+               seq: { cfb: [], nfl: [], all: [] } };
   });
 
-  const group = { cfb: blankRec(), nfl: blankRec() };
+  const group = { cfb: blankRec(), nfl: blankRec(), all: blankRec() };
   const summaries = [];
 
   data.entries.forEach(e => {
@@ -169,11 +171,14 @@ function computeStats(data) {
       // Pending and blank both sit out of the record and out of streaks.
       const res = raw === "W" || raw === "L" ? raw : null;
       per[p].seq[e.league].push(res);
+      per[p].seq.all.push(res);          // entries are date-sorted, so this is chronological
       if (raw === "P") { s.pending += 1; s.perfect = false; return; }
       if (!res) { s.perfect = false; return; }
       const b = res === "W" ? "w" : "l";
       per[p][e.league][b] += 1;
+      per[p].all[b] += 1;
       group[e.league][b] += 1;
+      group.all[b] += 1;
       s[b] += 1;
       s.counted += 1;
       if (res === "L") s.perfect = false;
@@ -187,22 +192,36 @@ function computeStats(data) {
       ...s,
       cfbPct: pct(s.cfb),
       nflPct: pct(s.nfl),
-      streak: { cfb: winStreak(s.seq.cfb), nfl: winStreak(s.seq.nfl) }
+      allPct: pct(s.all),
+      streak: { cfb: winStreak(s.seq.cfb), nfl: winStreak(s.seq.nfl), all: winStreak(s.seq.all) }
     };
   });
 
   return {
     rows,
-    byLeague: { cfb: rankBy(rows, "cfbPct", "cfb"), nfl: rankBy(rows, "nflPct", "nfl") },
-    leaders: { cfb: findLeaders(rows, "cfbPct", "cfb"), nfl: findLeaders(rows, "nflPct", "nfl") },
+    byLeague: {
+      cfb: rankBy(rows, "cfbPct", "cfb"),
+      nfl: rankBy(rows, "nflPct", "nfl"),
+      all: rankBy(rows, "allPct", "all")
+    },
+    leaders: {
+      cfb: findLeaders(rows, "cfbPct", "cfb"),
+      nfl: findLeaders(rows, "nflPct", "nfl"),
+      all: findLeaders(rows, "allPct", "all")
+    },
     group,
-    groupPct: { cfb: pct(group.cfb), nfl: pct(group.nfl) },
+    groupPct: { cfb: pct(group.cfb), nfl: pct(group.nfl), all: pct(group.all) },
     summaries,
     counts: {
       cfb: data.entries.filter(e => e.league === "cfb").length,
-      nfl: data.entries.filter(e => e.league === "nfl").length
+      nfl: data.entries.filter(e => e.league === "nfl").length,
+      all: data.entries.length
     },
-    pending: { cfb: pendingCount(data, "cfb"), nfl: pendingCount(data, "nfl") }
+    pending: {
+      cfb: pendingCount(data, "cfb"),
+      nfl: pendingCount(data, "nfl"),
+      all: pendingCount(data)
+    }
   };
 }
 
