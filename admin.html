@@ -115,6 +115,8 @@
     </div>
 
     <div class="savebar">
+      <div id="saveMsg" style="display:none;font-size:13px;font-weight:650;line-height:1.35;
+        padding:9px 11px;border-radius:10px;margin-bottom:9px"></div>
       <button class="btn primary wide" id="save">Save entry</button>
       <div class="actions" id="secondary" style="margin-top:9px;display:none">
         <button class="btn wide" id="cancelEdit">Cancel edit</button>
@@ -136,13 +138,36 @@ let dateTouched = false;
 
 const $ = id => document.getElementById(id);
 
+/* The banners sit at the top of the page and the Save button sits at the
+   bottom, so mirror every message into the save bar. Otherwise a failed save
+   scrolls out of sight and reads as a success. */
+const SAVE_MSG_STYLE = {
+  ok:   ["#12341f", "#a7f5c8", "#1d6b3c"],
+  err:  ["#351511", "#ffc0b6", "#8a2f22"],
+  info: ["#1d2531", "#8794a8", "#232c3a"]
+};
+
 function say(kind, text) {
   ["ok", "err", "info"].forEach(k => $(k).classList.remove("show"));
-  if (!text) return;
+  const bar = $("saveMsg");
+
+  if (!text) { bar.style.display = "none"; return; }
+
   const el = $(kind);
   el.textContent = text;
   el.classList.add("show");
-  if (kind === "ok") setTimeout(() => el.classList.remove("show"), 6000);
+
+  const [bg, fg, line] = SAVE_MSG_STYLE[kind] || SAVE_MSG_STYLE.info;
+  bar.textContent = text;
+  bar.style.background = bg;
+  bar.style.color = fg;
+  bar.style.border = "1px solid " + line;
+  bar.style.display = "block";
+
+  if (kind === "ok") setTimeout(() => {
+    el.classList.remove("show");
+    if (bar.textContent === text) bar.style.display = "none";
+  }, 6000);
 }
 
 /* ---------- github ---------- */
@@ -198,13 +223,31 @@ async function commitFile(nextData, message) {
     sha: SHA
   };
   const res = await fetch(apiUrl(), { method: "PUT", headers: headers(), body: JSON.stringify(body) });
+  if (res.status === 401) throw new Error("Token rejected. It has expired or been revoked. Make a new one.");
+  if (res.status === 403) throw new Error("This token can read but not write. It needs Contents set to Read and write.");
+  if (res.status === 404) throw new Error("Cannot write to that repo. Check the username, repo and branch.");
   if (res.status === 409) throw new Error("Someone else saved first. Reload and redo this entry.");
+  if (res.status === 422) throw new Error("GitHub rejected the file. The branch name may be wrong.");
   if (!res.ok) {
     let detail = "";
     try { detail = " " + (await res.json()).message; } catch (e) {}
     throw new Error("Save failed (" + res.status + ")." + detail);
   }
   SHA = (await res.json()).content.sha;
+}
+
+/* A token that can read but not write looks fine until the first save fails,
+   so ask GitHub up front what this one is allowed to do. */
+async function canWrite() {
+  try {
+    const res = await fetch(`https://api.github.com/repos/${STATE.owner}/${STATE.repo}`,
+      { headers: headers(), cache: "no-store" });
+    if (!res.ok) return null;                 // cannot tell; let the save decide
+    const j = await res.json();
+    return j.permissions ? !!j.permissions.push : null;
+  } catch (e) {
+    return null;
+  }
 }
 
 /* ---------- session ---------- */
@@ -240,11 +283,18 @@ async function connect(silent) {
   $("app").style.display = "block";
   $("lgSeg").style.display = "grid";
   $("topPad").style.display = "none";
-  $("whoRepo").textContent = STATE.owner + "/" + STATE.repo;
-  if (!silent) say("ok", "Connected.");
+  $("whoRepo").textContent = STATE.owner + "/" + STATE.repo + " on " + STATE.branch;
   defaultLeagueAndDate();
   buildForm();
   renderList();
+
+  const write = await canWrite();
+  if (write === false) {
+    say("err", "This token can read but not write, so saves will fail. " +
+               "Edit the token on GitHub and set Contents to Read and write.");
+  } else if (!silent) {
+    say("ok", "Connected.");
+  }
 }
 
 $("connect").addEventListener("click", () => connect(false));
@@ -425,7 +475,10 @@ $("save").addEventListener("click", async () => {
     const hasPicks = Object.keys(picks).some(p => picks[p].pick);
     if (!hasPicks) { say("err", "Nothing marked. Tap W, L or Pending for at least one guy."); return; }
     if (!confirm("No results marked yet.\n\nSave all " + Object.keys(picks).length +
-                 " as pending so you can settle them after the games?")) return;
+                 " as pending so you can settle them after the games?")) {
+      say("info", "Nothing saved. Tap W, L or Pending for each guy, then save.");
+      return;
+    }
     setAllPending();
     ({ picks, marked, missing } = readForm());
   }
@@ -437,16 +490,18 @@ $("save").addEventListener("click", async () => {
       ":\n\n" + dupes.map(e => e.label).join("\n") +
       "\n\nSave this as a separate entry #" + (dupes.length + 1) + "?" +
       "\n\nTo correct the existing one, cancel and use Working on above.");
-    if (!ok) return;
+    if (!ok) { say("info", "Nothing saved. Use Working on above to fix the existing entry."); return; }
   }
 
   if (missing.length) {
     const ok = confirm(missing.length + " still blank:\n\n" + missing.join("\n") +
       "\n\nBlank picks count toward nobody's record. Save anyway?");
-    if (!ok) return;
+    if (!ok) { say("info", "Nothing saved."); return; }
   }
 
+  const label0 = $("save").textContent;
   $("save").disabled = true;
+  $("save").textContent = "Saving...";
   say("info", "Saving...");
   try {
     DATA = await fetchFile(); // refresh so we never clobber a newer save
@@ -457,13 +512,14 @@ $("save").addEventListener("click", async () => {
     if (i >= 0) DATA.entries[i] = entry; else DATA.entries.push(entry);
     DATA.entries.sort((a, b) => a.date.localeCompare(b.date) || a.id.localeCompare(b.id));
     await commitFile(DATA, (i >= 0 ? "Update " : "Add ") + label);
-    say("ok", (i >= 0 ? "Updated " : "Saved ") + label + ".");
+    say("ok", (i >= 0 ? "Updated " : "Saved ") + label + ". It is live on the main page.");
     resetForm();
     renderList();
   } catch (e) {
-    say("err", e.message);
+    say("err", "NOT SAVED. " + e.message);
   } finally {
     $("save").disabled = false;
+    $("save").textContent = label0;
   }
 });
 
@@ -675,7 +731,7 @@ async function deleteEntry(id) {
     say("ok", "Deleted " + e.label + ".");
     renderList();
   } catch (err) {
-    say("err", err.message);
+    say("err", "NOT DELETED. " + err.message);
   }
 }
 
@@ -762,7 +818,7 @@ $("showTok").addEventListener("click", () => {
   const el = $("tokOut");
   const shown = el.dataset.shown === "1";
   if (shown) {
-    el.textContent = "Signed in to " + STATE.owner + "/" + STATE.repo + ".";
+    el.textContent = "Signed in to " + STATE.owner + "/" + STATE.repo + " on " + STATE.branch + ".";
     el.dataset.shown = "0";
     $("showTok").textContent = "Show token";
   } else {
