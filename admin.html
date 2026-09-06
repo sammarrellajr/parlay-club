@@ -90,6 +90,18 @@
       <div id="list"></div>
     </div>
 
+    <div class="card" id="shareCard" style="margin-top:14px">
+      <h2>Share update</h2>
+      <p class="cs">Builds an image of both slates and opens the iPhone share sheet.</p>
+      <select id="shareWk"></select>
+      <div class="two" style="margin-top:10px">
+        <button class="btn primary" id="shareBtn">Share update</button>
+        <button class="btn" id="previewBtn">Preview</button>
+      </div>
+      <div class="shot" id="sharePrev" hidden></div>
+      <div class="hint" id="shareHint">The link to the site goes along with the image.</div>
+    </div>
+
     <div class="card" id="acct" style="margin-top:14px">
       <h2>This device</h2>
       <p class="cs">Your token lives in this browser only. It is never in the repo.</p>
@@ -551,6 +563,7 @@ function renderList() {
   if (!list.length) {
     el.innerHTML = '<div class="hint">Nothing logged yet.</div>';
     renderQueue();
+    renderShare();
     return;
   }
   el.innerHTML = list.slice().reverse().map(e => {
@@ -575,6 +588,7 @@ function renderList() {
   el.querySelectorAll("[data-del]").forEach(b => b.addEventListener("click", () => deleteEntry(b.dataset.del)));
 
   renderQueue();
+  renderShare();
 }
 
 /* Anything still carrying a pending pick, across both leagues. */
@@ -634,6 +648,84 @@ async function deleteEntry(id) {
     say("err", err.message);
   }
 }
+
+/* ---------- share ---------- */
+let WEEKENDS = [];
+
+function siteUrl() {
+  return location.href.replace(/[^/]*$/, "").replace(/\/$/, "") + "/";
+}
+
+/* Called from renderList, so the picker stays current after every save. */
+function renderShare() {
+  WEEKENDS = weekends(DATA);
+  const sel = $("shareWk");
+  const keep = sel.value;
+  sel.innerHTML = WEEKENDS.map(w =>
+    `<option value="${esc(w.key)}">${esc(w.label)}</option>`).join("");
+  if (WEEKENDS.some(w => w.key === keep)) sel.value = keep;
+  $("shareCard").style.display = WEEKENDS.length ? "block" : "none";
+  $("sharePrev").hidden = true;
+  $("sharePrev").innerHTML = "";
+}
+
+function pickedWeekend() {
+  return WEEKENDS.find(w => w.key === $("shareWk").value) || WEEKENDS[0];
+}
+
+function cardBlob(cv) {
+  return new Promise(res => cv.toBlob(res, "image/png"));
+}
+
+$("previewBtn").addEventListener("click", () => {
+  const wk = pickedWeekend();
+  if (!wk) return;
+  const box = $("sharePrev");
+  box.innerHTML = "";
+  const cv = buildShareCard(DATA, wk, siteUrl());
+  const img = new Image();
+  img.src = cv.toDataURL("image/png");
+  img.style.cssText =
+    "display:block;width:100%;margin-top:12px;border-radius:12px;border:1px solid var(--line)";
+  box.appendChild(img);
+  box.hidden = false;
+});
+
+$("shareBtn").addEventListener("click", async () => {
+  const wk = pickedWeekend();
+  if (!wk) { say("err", "Nothing logged to share yet."); return; }
+
+  const url = siteUrl();
+  const text = "Parlay Club - " + wk.label + "\n" + url;
+  let blob;
+  try {
+    blob = await cardBlob(buildShareCard(DATA, wk, url));
+  } catch (e) {
+    say("err", "Could not build the image.");
+    return;
+  }
+  const file = new File([blob], "parlay-club-" + wk.key + ".png", { type: "image/png" });
+
+  // iOS keeps the tap alive for a few seconds, so the share sheet still opens here.
+  try {
+    if (navigator.canShare && navigator.canShare({ files: [file] })) {
+      await navigator.share({ files: [file], text });
+    } else if (navigator.share) {
+      await navigator.share({ text, url });
+      say("info", "Shared the link. This browser will not attach images.");
+    } else {
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = file.name;
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+      say("info", "Saved the image. This browser has no share sheet.");
+    }
+  } catch (e) {
+    if (e && e.name === "AbortError") return;   // he backed out of the sheet
+    say("err", "Share failed: " + e.message);
+  }
+});
 
 /* ---------- this device ---------- */
 $("showTok").addEventListener("click", () => {
