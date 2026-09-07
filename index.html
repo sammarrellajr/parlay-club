@@ -51,8 +51,7 @@
 }
 .dpk.blank { color: var(--dim); font-style: italic; }
 
-/* Parlay banner: all five legs cashing is the whole point, so it gets its
-   own full-width row above everything else. */
+/* Full-width bars above the tiles: parlay wins, then the money. */
 .parlay {
   display: flex; align-items: center; justify-content: space-between; gap: 12px;
   background: var(--panel); border: 1px solid var(--line);
@@ -73,6 +72,11 @@
   background: linear-gradient(180deg, #16241c 0%, var(--panel) 75%);
 }
 .parlay.hit .plab, .parlay.hit .pval { color: var(--accent); }
+
+.parlay.up { border-color: #2f5c42; }
+.parlay.up .pval { color: var(--accent); }
+.parlay.down { border-color: #5c3129; }
+.parlay.down .pval { color: var(--loss); }
 </style>
 </head>
 <body>
@@ -99,6 +103,8 @@
   <div class="msg err" id="err"></div>
 
   <div class="parlay" id="parlay"></div>
+
+  <div class="parlay" id="money"></div>
 
   <div class="tiles" id="tiles"></div>
 
@@ -180,6 +186,7 @@ function isLeader(key, name, played) {
 const LG_NAME = { all: "Overall", cfb: "College Football", nfl: "NFL" };
 const TILE_LAB = { all: "Group overall", cfb: "Group college", nfl: "Group NFL" };
 const PARLAY_LAB = { all: "Parlay wins", cfb: "College parlay wins", nfl: "NFL parlay wins" };
+const MONEY_LAB = { all: "Money on the year", cfb: "College money", nfl: "NFL money" };
 
 function render() {
   const key = LG;
@@ -200,6 +207,17 @@ function render() {
          : "no slate has finished yet"}</div>
      </div>
      <div class="pval">${won}</div>`;
+
+  const m = STATS.money[key];
+  $("money").className = "parlay" + (m.net > 0 ? " up" : m.net < 0 ? " down" : "");
+  $("money").innerHTML =
+    `<div>
+       <div class="plab">${MONEY_LAB[key]}</div>
+       <div class="psubl">${fmtMoney(m.wagered)} in at ${fmtMoney(m.stake)} a slate &middot; ${
+         fmtMoney(m.won)} back${m.unpriced ? " &middot; " + m.unpriced + " payout" +
+         (m.unpriced === 1 ? "" : "s") + " not entered" : ""}</div>
+     </div>
+     <div class="pval">${fmtMoney(m.net)}</div>`;
 
   $("tiles").innerHTML =
     `<div class="tile">
@@ -355,7 +373,9 @@ function renderHistory(key, name) {
     return `<div class="wk${idx === 0 ? " open" : ""}">
       <div class="wk-head" onclick="this.parentNode.classList.toggle('open')">
         <span class="wk-t">${esc(e.label)}</span>
-        <span class="wk-m">${s.counted && s.perfect ? '<span class="sweep">SWEEP</span>' : ""}${s.pending ? `<span class="pend-chip">${s.pending} PENDING</span>` : ""}${s.w}-${s.l}<span class="chev">&#9654;</span></span>
+        <span class="wk-m">${s.counted && s.perfect ? '<span class="sweep">SWEEP' +
+          (e.payout ? " " + fmtMoney(e.payout) : "") + '</span>' : ""}${
+          s.pending ? `<span class="pend-chip">${s.pending} PENDING</span>` : ""}${s.w}-${s.l}<span class="chev">&#9654;</span></span>
       </div>
       <div class="wk-body">${body}</div>
     </div>`;
