@@ -7,6 +7,7 @@
     "Tyler"
   ],
   "season": "2026",
+  "stake": 5,
   "entries": [
     {
       "id": "2026-08-29-cfb",
@@ -34,6 +35,7 @@
           "pick": "UNC +8.5"
         }
       },
+      "payout": 0,
       "label": "Sat 8/29 College"
     },
     {
@@ -62,6 +64,7 @@
           "pick": "Purdue -34.5"
         }
       },
+      "payout": 0,
       "label": "Fri 9/4 College"
     },
     {
@@ -90,7 +93,8 @@
           "result": "W",
           "pick": "Boise State +24.5"
         }
-      }
+      },
+      "payout": 157.7
     }
   ]
 }
