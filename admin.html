@@ -65,6 +65,51 @@ details.card.fold:not([open]) { padding-bottom: 6px; }
   border-radius: 5px; padding: 2px 6px; margin-right: 6px;
 }
 .lrow.editing { background: #16241c; border-radius: 10px; padding-left: 9px; padding-right: 9px; }
+
+/* Guided pick entry. The chips choose a shape, the boxes fill it in, and the
+   plain field underneath always shows exactly what gets saved. */
+.modes { display: flex; gap: 6px; margin-top: 8px; }
+.modes button {
+  flex: 1;
+  min-height: 34px;
+  border: 1px solid var(--line);
+  background: #0e131b;
+  color: var(--dim);
+  border-radius: 9px;
+  font-size: 12.5px;
+  font-weight: 750;
+  letter-spacing: 0.3px;
+  cursor: pointer;
+}
+.modes button:active { transform: scale(0.97); }
+.modes button.on { border-color: #3d5680; background: #141c28; color: var(--text); }
+
+.bld { margin-top: 9px; display: grid; gap: 8px; }
+.bld[hidden] { display: none; }
+.bpart { display: grid; gap: 8px; }
+.bpart[hidden] { display: none; }
+
+.teams { display: grid; grid-template-columns: 1fr 14px 1fr; gap: 6px; align-items: start; }
+.slash { text-align: center; line-height: 40px; color: var(--dim); font-weight: 700; }
+.tw { position: relative; min-width: 0; }
+.tw input, input.num { font-size: 15px; padding: 9px 11px; min-height: 40px; }
+
+.nrow { display: grid; grid-template-columns: 1fr 116px; gap: 8px; align-items: center; }
+.tog { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 6px; }
+.tog button {
+  min-height: 40px;
+  border: 1px solid var(--line);
+  background: #0e131b;
+  color: var(--muted);
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 800;
+  cursor: pointer;
+}
+.tog button.on { background: var(--panel-hi); border-color: #3d5680; color: var(--text); }
+
+/* the running count that sits on the right of a fold's summary */
+.fcount { margin-left: auto; font-size: 11.5px; font-weight: 650; color: var(--dim); }
 </style>
 </head>
 <body>
@@ -125,7 +170,7 @@ details.card.fold:not([open]) { padding-bottom: 6px; }
       <div class="hint" id="dateHint"></div>
 
       <details class="fold" id="pasteFold">
-        <summary>Paste a slip instead of typing</summary>
+        <summary>Paste slip</summary>
         <textarea id="pasteBox" rows="3" placeholder="Paste the whole slip, or one pick per line"></textarea>
         <div class="two" style="margin-top:10px">
           <button class="btn" id="fillPicks">Fill picks</button>
@@ -145,13 +190,16 @@ details.card.fold:not([open]) { padding-bottom: 6px; }
       <button class="btn wide" id="allPending" style="margin-top:12px">Mark all pending</button>
     </div>
 
-    <div id="entries"></div>
+    <details class="card fold" id="entriesFold" open style="margin-top:14px">
+      <summary>Entries<span class="fcount" id="entriesCount"></span></summary>
+      <div id="entries" style="margin-top:10px"></div>
+    </details>
 
-    <div class="card" id="everyCard" style="margin-top:14px">
-      <h2>Every entry</h2>
-      <p class="cs">Edit loads it back up top, payout included.</p>
+    <details class="card fold" id="histCard" style="margin-top:14px">
+      <summary>History<span class="fcount" id="histCount"></span></summary>
+      <p class="cs" style="margin-top:10px">Edit loads it back up top, payout included.</p>
       <div id="entryList"></div>
-    </div>
+    </details>
 
     <div class="card" id="shareCard" style="margin-top:14px">
       <h2>Share update</h2>
@@ -422,6 +470,9 @@ function buildForm(entry) {
   const lg = LEAGUES.find(l => l.key === LG);
   $("entries").innerHTML = players.map(p => {
     const v = (entry && entry.picks[p]) || {};
+    const b = parsePick(v.pick);
+    const ou = b && b.mode === "ou" ? b : null;
+    const sp = b && b.mode === "sp" ? b : null;
     return `<div class="ebox" data-player="${esc(p)}">
       <div class="ename">${esc(p)}</div>
       <div class="leg">
@@ -432,6 +483,55 @@ function buildForm(entry) {
             <button type="button" data-v="P" class="pend ${v.result === "P" ? "on-p" : ""}">PENDING</button>
           </span>
         </div>
+
+        <div class="modes">
+          <button type="button" data-m="ou">O/U</button>
+          <button type="button" data-m="sp">Spread</button>
+          <button type="button" data-m="prop">Prop</button>
+        </div>
+
+        <div class="bld" hidden>
+          <div class="bpart" data-part="ou" hidden>
+            <div class="teams">
+              <div class="tw">
+                <input type="text" class="tm" data-f="a" placeholder="Team" autocomplete="off"
+                  autocorrect="off" spellcheck="false" value="${esc(ou ? ou.a : "")}">
+                <div class="sugg" hidden></div>
+              </div>
+              <div class="slash">/</div>
+              <div class="tw">
+                <input type="text" class="tm" data-f="b" placeholder="Team" autocomplete="off"
+                  autocorrect="off" spellcheck="false" value="${esc(ou ? ou.b : "")}">
+                <div class="sugg" hidden></div>
+              </div>
+            </div>
+            <div class="nrow">
+              <span class="tog" data-t="ou">
+                <button type="button" data-val="Over" class="${!ou || ou.ou === "Over" ? "on" : ""}">Over</button>
+                <button type="button" data-val="Under" class="${ou && ou.ou === "Under" ? "on" : ""}">Under</button>
+              </span>
+              <input type="text" class="num" inputmode="decimal" placeholder="52.5"
+                autocomplete="off" spellcheck="false" value="${esc(ou ? ou.num : "")}">
+            </div>
+          </div>
+
+          <div class="bpart" data-part="sp" hidden>
+            <div class="tw">
+              <input type="text" class="tm" data-f="s" placeholder="Team" autocomplete="off"
+                autocorrect="off" spellcheck="false" value="${esc(sp ? sp.team : "")}">
+              <div class="sugg" hidden></div>
+            </div>
+            <div class="nrow">
+              <span class="tog" data-t="sg">
+                <button type="button" data-val="-" class="${!sp || sp.sg === "-" ? "on" : ""}">&minus;</button>
+                <button type="button" data-val="+" class="${sp && sp.sg === "+" ? "on" : ""}">+</button>
+              </span>
+              <input type="text" class="num" inputmode="decimal" placeholder="7.5"
+                autocomplete="off" spellcheck="false" value="${esc(sp ? sp.num : "")}">
+            </div>
+          </div>
+        </div>
+
         <div class="pick-in">
           <input type="text" class="pick" autocomplete="off" autocorrect="off" spellcheck="false"
             placeholder="${lg.full} pick (optional)" value="${esc(v.pick || "")}">
@@ -452,9 +552,67 @@ function buildForm(entry) {
     });
   });
 
-  $("entries").querySelectorAll(".pick").forEach(wireSuggest);
+  $("entries").querySelectorAll(".pick").forEach(i => wireSuggest(i));
+  $("entries").querySelectorAll(".ebox").forEach(wireBuilder);
   $("payout").value = entry && entry.payout ? String(entry.payout) : "";
   syncPayoutRow();
+}
+
+/* The chips pick a shape and the boxes underneath write the line for you. The
+   plain field stays the record, so pasting a slip or just typing still works
+   and you can always see what will be saved. */
+function wireBuilder(row) {
+  const bld = row.querySelector(".bld");
+  const pick = row.querySelector(".pick");
+  const parts = [...row.querySelectorAll(".bpart")];
+  const chips = [...row.querySelectorAll(".modes button")];
+  const partFor = m => row.querySelector('.bpart[data-part="' + m + '"]');
+
+  const show = mode => {
+    chips.forEach(c => c.classList.toggle("on", c.dataset.m === mode));
+    if (mode !== "ou" && mode !== "sp") {
+      bld.hidden = true;
+      parts.forEach(p => { p.hidden = true; });
+      if (mode === "prop") { pick.placeholder = "Player prop, in your own words"; pick.focus(); }
+      return;
+    }
+    bld.hidden = false;
+    parts.forEach(p => { p.hidden = p.dataset.part !== mode; });
+    const first = partFor(mode).querySelector("input");
+    if (first) first.focus();
+  };
+
+  chips.forEach(c => c.addEventListener("click", () =>
+    show(c.classList.contains("on") ? null : c.dataset.m)));
+
+  const compose = () => {
+    const on = chips.find(c => c.classList.contains("on"));
+    if (!on || on.dataset.m === "prop") return;
+    const part = partFor(on.dataset.m);
+    const num = part.querySelector(".num").value.trim();
+
+    if (on.dataset.m === "ou") {
+      const a = part.querySelector('[data-f="a"]').value.trim();
+      const b = part.querySelector('[data-f="b"]').value.trim();
+      const game = [a, b].filter(Boolean).join("/");
+      if (!game) return;
+      const side = part.querySelector('.tog[data-t="ou"] button.on').dataset.val;
+      pick.value = [game, side, num].filter(Boolean).join(" ");
+    } else {
+      const team = part.querySelector('[data-f="s"]').value.trim();
+      if (!team) return;
+      const sg = part.querySelector('.tog[data-t="sg"] button.on').dataset.val;
+      pick.value = num ? team + " " + sg + num : team;
+    }
+  };
+
+  row.querySelectorAll(".bpart input").forEach(i => i.addEventListener("input", compose));
+  row.querySelectorAll(".tog button").forEach(b => b.addEventListener("click", () => {
+    [...b.parentNode.children].forEach(x => x.classList.remove("on"));
+    b.classList.add("on");
+    compose();
+  }));
+  row.querySelectorAll(".tm").forEach(i => wireSuggest(i, { teamsOnly: true, after: compose }));
 }
 
 /* The payout only means anything when every leg won, so it only shows then. */
@@ -464,20 +622,26 @@ function syncPayoutRow() {
   $("payoutRow").style.display = swept ? "block" : "none";
   $("stakeLbl").textContent = (DATA && DATA.stake) || 5;
   if (!swept) $("payout").value = "";
+
+  const marked = boxes.filter(b => b.querySelector(".on-w, .on-l, .on-p")).length;
+  $("entriesCount").textContent = boxes.length
+    ? marked + " of " + boxes.length + " marked" : "";
 }
 
-/* Type-ahead under a pick field: prior picks first, then team names. */
-function wireSuggest(input) {
+/* Type-ahead under a field: prior picks first, then team names. Team boxes ask
+   for teams only, and drop the name in without a trailing space. */
+function wireSuggest(input, opts) {
+  const o = opts || {};
   const box = input.parentNode.querySelector(".sugg");
   const prior = new Set((DATA ? priorPicks(DATA) : []).map(t => t.toLowerCase()));
 
   const close = () => { box.hidden = true; box.innerHTML = ""; };
 
   const refresh = () => {
-    const hits = suggestPicks(input.value, DATA, 6);
+    const hits = o.teamsOnly ? suggestTeams(input.value, 6) : suggestPicks(input.value, DATA, 6);
     if (!hits.length) return close();
     box.innerHTML = hits.map(h =>
-      `<button type="button" class="${prior.has(h.toLowerCase()) ? "prior" : ""}">${esc(h)}</button>`
+      `<button type="button" class="${!o.teamsOnly && prior.has(h.toLowerCase()) ? "prior" : ""}">${esc(h)}</button>`
     ).join("");
     box.hidden = false;
     [...box.children].forEach((b, i) => {
@@ -486,8 +650,9 @@ function wireSuggest(input) {
       b.addEventListener("click", () => {
         const val = hits[i];
         // A whole prior pick drops in complete; a bare team name leaves room for the number.
-        input.value = prior.has(val.toLowerCase()) ? val : val + " ";
+        input.value = (o.teamsOnly || prior.has(val.toLowerCase())) ? val : val + " ";
         input.focus();
+        if (o.after) o.after();
         refresh();
       });
     });
@@ -639,6 +804,7 @@ $("fillPicks").addEventListener("click", () => {
 
   ASSIGNED = autoAssign(PARSED, DATA.players, DATA);
   $("pasteFold").open = true;
+  $("entriesFold").open = true;      // the picks just landed, so show them
   renderAssign();
   applyAssign();
 
@@ -754,6 +920,9 @@ function renderEntries() {
 
   el.querySelectorAll("[data-edit]").forEach(b =>
     b.addEventListener("click", () => editEntry(b.dataset.edit)));
+
+  const n = DATA.entries.length;
+  $("histCount").textContent = n ? n + (n === 1 ? " slate" : " slates") : "";
 }
 
 /* Anything still carrying a pending pick, across both leagues. */
@@ -794,6 +963,7 @@ function editEntry(id) {
   buildForm(e);
   updateDateHint();
   renderEntries();               // highlight the row being worked on
+  $("entriesFold").open = true;  // the picks are what you came to fix
   window.scrollTo({ top: 0, behavior: "smooth" });
   say("info", "Editing " + e.label + ". The league is locked while editing.");
 }
