@@ -170,6 +170,13 @@ async function boot(quiet) {
 // Coming back to the app from the Home Screen should show current numbers.
 document.addEventListener("visibilitychange", () => { if (!document.hidden) boot(true); });
 
+/* Everyone tied at the top gets the star, so the rows agree with the Leader
+   tile instead of crowning whoever happens to sort first. */
+function isLeader(key, name, played) {
+  const ld = STATS.leaders[key];
+  return played > 0 && !!ld && ld.names.indexOf(name) !== -1;
+}
+
 const LG_NAME = { all: "Overall", cfb: "College Football", nfl: "NFL" };
 const TILE_LAB = { all: "Group overall", cfb: "Group college", nfl: "Group NFL" };
 const PARLAY_LAB = { all: "Parlay wins", cfb: "College parlay wins", nfl: "NFL parlay wins" };
@@ -222,7 +229,7 @@ function render() {
     const p = key === "cfb" ? r.cfbPct : r.nflPct;
     const played = rc.w + rc.l;
     const st = r.streak[key];
-    const lead = i === 0 && played > 0;
+    const lead = isLeader(key, r.name, played);
     const sub = played
       ? (st >= 2 ? `<span class="streak">${st} straight</span>` : "") + dots(r.seq[key])
       : '<span class="nodata">No results yet</span>';
@@ -246,7 +253,7 @@ function render() {
 function renderAll(rows) {
   $("rows").innerHTML = rows.map((r, i) => {
     const played = r.all.w + r.all.l;
-    const lead = i === 0 && played > 0;
+    const lead = isLeader("all", r.name, played);
     const st = r.streak.all;
     const sub = played
       ? (st >= 2 ? `<span class="streak">${st} straight</span>` : "") + dots(r.seq.all)
