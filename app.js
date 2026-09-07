@@ -941,6 +941,153 @@ function buildShareCard(data, weekend, siteUrl) {
   return cv;
 }
 
+/* Break a pick over at most maxLines, trimming the last one with an ellipsis
+   rather than letting a long prop run off the card. */
+function wrapText(ctx, text, maxW, maxLines) {
+  const words = String(text || "").split(/\s+/).filter(Boolean);
+  if (!words.length) return [];
+  const lines = [];
+  let cur = "";
+  words.forEach(w => {
+    const t = cur ? cur + " " + w : w;
+    if (!cur || ctx.measureText(t).width <= maxW) cur = t;
+    else { lines.push(cur); cur = w; }
+  });
+  if (cur) lines.push(cur);
+  if (lines.length <= maxLines) return lines;
+
+  const kept = lines.slice(0, maxLines);
+  let last = kept[maxLines - 1];
+  while (last.length && ctx.measureText(last + "…").width > maxW) last = last.slice(0, -1);
+  kept[maxLines - 1] = last.replace(/\s+$/, "") + "…";
+  return kept;
+}
+
+/* The slate itself: who took what, for sharing before kickoff so everyone can
+   see all five legs in one place. A leg still waiting shows no marker, so a
+   card sent the night before is all picks and no noise. */
+function buildSlateCard(data, entry, siteUrl) {
+  const C = CARD;
+  const pad = C.pad, W = C.w;
+  const tx = pad, tw = W - pad * 2;
+  const nameW = 230;
+  const pickW = tw - nameW - 130;                 // room for a W/L chip on the end
+
+  const probe = document.createElement("canvas").getContext("2d");
+  probe.font = cardFont(600, 30);
+  const rows = data.players.map(p => {
+    const v = entry.picks[p] || {};
+    return {
+      name: p,
+      result: v.result || null,
+      lines: v.pick ? wrapText(probe, v.pick, pickW, 2) : []
+    };
+  });
+
+  let w = 0, l = 0, pend = 0;
+  rows.forEach(r => { if (r.result === "W") w++; else if (r.result === "L") l++; else pend++; });
+
+  const rowH = r => (r.lines.length > 1 ? 128 : 96);
+  const tableY = pad + 150;
+  const tableH = rows.reduce((n, r) => n + rowH(r), 0);
+  const footY = tableY + tableH + 50;
+  const height = footY + 42 + pad;
+
+  const cv = document.createElement("canvas");
+  cv.width = W;
+  cv.height = height;
+  const ctx = cv.getContext("2d");
+
+  ctx.fillStyle = C.bg;
+  ctx.fillRect(0, 0, W, height);
+  ctx.textBaseline = "middle";
+
+  /* ---- header ---- */
+  ctx.textAlign = "left";
+  ctx.fillStyle = C.text;
+  ctx.font = cardFont(700, 54);
+  ctx.fillText("Parlay Club", pad, pad + 36);
+  ctx.fillStyle = C.muted;
+  ctx.font = cardFont(500, 34);
+  ctx.fillText(entry.label || "", pad, pad + 92);
+
+  ctx.textAlign = "right";
+  ctx.fillStyle = C.dim;
+  ctx.font = cardFont(600, 22);
+  ctx.fillText("THE SLATE", W - pad, pad + 26);
+  // before kickoff there is nothing to report but the number of legs
+  if (w + l === 0) {
+    ctx.fillStyle = C.gold;
+    ctx.font = cardFont(700, 40);
+    ctx.fillText(rows.length + " LEGS", W - pad, pad + 74);
+  } else {
+    ctx.fillStyle = w > l ? C.win : l > w ? C.loss : C.text;
+    ctx.font = cardFont(700, 52);
+    ctx.fillText(w + "-" + l, W - pad, pad + 74);
+    if (pend) {
+      ctx.fillStyle = C.gold;
+      ctx.font = cardFont(600, 22);
+      ctx.fillText(pend + " still pending", W - pad, pad + 118);
+    }
+  }
+
+  /* ---- the picks ---- */
+  ctx.fillStyle = C.panel;
+  roundRect(ctx, tx, tableY, tw, tableH, 24);
+  ctx.fill();
+
+  let y = tableY;
+  rows.forEach((r, i) => {
+    const h = rowH(r);
+    const mid = y + h / 2;
+    if (i) { ctx.fillStyle = C.line; ctx.fillRect(tx + 24, y, tw - 48, 1); }
+
+    ctx.textAlign = "left";
+    ctx.fillStyle = C.text;
+    ctx.font = cardFont(700, 34);
+    ctx.fillText(r.name, tx + 30, mid);
+
+    ctx.font = cardFont(600, 30);
+    if (r.lines.length) {
+      ctx.fillStyle = C.text;
+      const top = mid - (r.lines.length - 1) * 19;
+      r.lines.forEach((ln, k) => ctx.fillText(ln, tx + nameW, top + k * 38));
+    } else {
+      ctx.fillStyle = C.dim;
+      ctx.fillText("no pick logged", tx + nameW, mid);
+    }
+
+    // a settled leg gets its mark; a pending one stays quiet
+    if (r.result === "W" || r.result === "L") {
+      const [bg, fg] = cellColors(r.result);
+      const cw = 66, ch = 48, cxr = tx + tw - 30 - cw;
+      ctx.fillStyle = bg;
+      roundRect(ctx, cxr, mid - ch / 2, cw, ch, 12);
+      ctx.fill();
+      ctx.textAlign = "center";
+      ctx.fillStyle = fg;
+      ctx.font = cardFont(800, 28);
+      ctx.fillText(r.result, cxr + cw / 2, mid + 1);
+    }
+
+    y += h;
+  });
+
+  /* ---- footer ---- */
+  const stake = Number(data.stake) > 0 ? Number(data.stake) : 5;
+  ctx.textAlign = "left";
+  ctx.fillStyle = C.dim;
+  ctx.font = cardFont(500, 24);
+  ctx.fillText(String(siteUrl || "").replace(/^https?:\/\//, "").replace(/\/$/, ""), pad, footY);
+
+  ctx.textAlign = "right";
+  ctx.font = cardFont(700, 26);
+  ctx.fillStyle = C.muted;
+  ctx.fillText(fmtMoney(stake) + " parlay", W - pad, footY);
+
+  return cv;
+}
+
 /* ---------- iOS Home Screen status bar ---------- */
 
 /* Added to the Home Screen the page runs under the status bar, and iOS is
