@@ -697,6 +697,33 @@ function cellColors(kind) {
   return [null, CARD.dim];
 }
 
+/* The combined column reads as a ladder: best record green, worst red, and
+   everyone between shaded through yellow. Equal records share a rung, so a tie
+   at the top is two greens. Anyone yet to play stays out of it entirely.
+   Light tints, because they sit on a dark card. */
+const LADDER = { top: [134, 229, 173], mid: [240, 217, 140], bot: [243, 163, 160] };
+
+function ladderColors(records) {
+  // Rungs are the distinct records as printed, in the order the table already
+  // sorted them, so the eye and the colour agree: 4-0 above 3-0 above 3-1.
+  const key = rc => rc.w + "-" + rc.l;
+  const tiers = [];
+  records.forEach(rc => {
+    if (rc.w + rc.l === 0) return;
+    if (!tiers.includes(key(rc))) tiers.push(key(rc));
+  });
+
+  const mix = (a, b, t) => a.map((v, i) => Math.round(v + (b[i] - v) * t));
+  return records.map(rc => {
+    if (rc.w + rc.l === 0) return null;
+    const i = tiers.indexOf(key(rc));
+    const t = tiers.length > 1 ? i / (tiers.length - 1) : 0;
+    const c = t <= 0.5 ? mix(LADDER.top, LADDER.mid, t * 2)
+                       : mix(LADDER.mid, LADDER.bot, (t - 0.5) * 2);
+    return c;
+  });
+}
+
 /* Which leagues cashed a full parlay this weekend. */
 function weekendParlays(data, weekend) {
   const hit = [];
@@ -742,6 +769,7 @@ function buildShareCard(data, weekend, siteUrl) {
 
   const hits = weekendParlays(data, weekend);
   const money = moneyFor(data);
+  const ladder = ladderColors(rows.map(r => r.all));
 
   const headH = 84, rowH = 92;
   const stickerY = pad + 152;
@@ -878,7 +906,21 @@ function buildShareCard(data, weekend, siteUrl) {
     };
     rec(r.sCfb, 2, false);
     rec(r.sNfl, 3, false);
-    rec(r.all, 4, true);
+
+    // the combined record, sitting on its rung of the ladder
+    const c = ladder[i];
+    const cx = colMid(4);
+    if (c) {
+      ctx.fillStyle = `rgba(${c[0]}, ${c[1]}, ${c[2]}, 0.13)`;
+      roundRect(ctx, cx - 58, mid - 26, 116, 52, 14);
+      ctx.fill();
+      ctx.fillStyle = `rgb(${c[0]}, ${c[1]}, ${c[2]})`;
+    } else {
+      ctx.fillStyle = C.dim;
+    }
+    ctx.textAlign = "center";
+    ctx.font = cardFont(800, 32);
+    ctx.fillText(c ? fmtRec(r.all) : "—", cx, mid + 1);
   });
 
   // the seam goes on last so the row rules don't chop it up
