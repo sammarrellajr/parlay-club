@@ -43,20 +43,39 @@ function repoSettings() {
 
 /* ---------- loading ---------- */
 
+/* Three places hold the same file and they do not update together. The API
+   answers with whatever was committed a second ago. The Pages copy waits on a
+   redeploy, a minute or two. raw.githubusercontent hands out a cached copy for
+   five minutes and ignores a cache-busting query, which is why a fresh save
+   used to look like nothing had happened. So: API first, Pages next, raw last.
+   The API allows 60 calls an hour per address unauthenticated; past that it
+   answers 403 and the loop simply moves on. */
 async function loadResults() {
   const bust = "?t=" + Date.now();
   const r = repoSettings();
-  const urls = [];
+  const sources = [];
   if (r) {
-    urls.push(`https://raw.githubusercontent.com/${r.owner}/${r.repo}/${r.branch || "main"}/${CONFIG.file}${bust}`);
+    sources.push({
+      url: `https://api.github.com/repos/${r.owner}/${r.repo}/contents/${CONFIG.file}` +
+           `?ref=${r.branch || "main"}&t=${Date.now()}`,
+      raw: true
+    });
   }
-  urls.push(CONFIG.file + bust);
+  sources.push({ url: CONFIG.file + bust });
+  if (r) {
+    sources.push({
+      url: `https://raw.githubusercontent.com/${r.owner}/${r.repo}/${r.branch || "main"}/${CONFIG.file}${bust}`
+    });
+  }
 
   let lastErr = null;
-  for (const url of urls) {
+  for (const s of sources) {
     try {
-      const res = await fetch(url, { cache: "no-store" });
-      if (!res.ok) { lastErr = new Error(`${res.status} on ${url}`); continue; }
+      const res = await fetch(s.url, {
+        cache: "no-store",
+        headers: s.raw ? { Accept: "application/vnd.github.raw" } : {}
+      });
+      if (!res.ok) { lastErr = new Error(`${res.status} on ${s.url}`); continue; }
       return normalize(await res.json());
     } catch (e) { lastErr = e; }
   }
