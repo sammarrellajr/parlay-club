@@ -69,10 +69,10 @@
   font-variant-numeric: tabular-nums; color: var(--text); line-height: 1; flex: none;
 }
 .parlay.hit {
-  border-color: #6b5312;
-  background: linear-gradient(180deg, #241d07 0%, var(--panel) 75%);
+  border-color: #2f5c42;
+  background: linear-gradient(180deg, #16241c 0%, var(--panel) 75%);
 }
-.parlay.hit .plab, .parlay.hit .pval { color: var(--gold); }
+.parlay.hit .plab, .parlay.hit .pval { color: var(--accent); }
 </style>
 </head>
 <body>
@@ -231,13 +231,13 @@ function render() {
     const st = r.streak[key];
     const lead = isLeader(key, r.name, played);
     const sub = played
-      ? (st >= 2 ? `<span class="streak">${st} straight</span>` : "") + dots(r.seq[key])
+      ? streakBadge(st)
       : '<span class="nodata">No results yet</span>';
     return `<div class="prow${lead ? " lead" : ""}">
       <div class="pnum">${i + 1}</div>
       <div class="pmain">
         <div class="pnm">${esc(r.name)}${lead ? '<span class="crown">&#9733;</span>' : ""}</div>
-        <div class="psub">${sub}</div>
+        ${sub ? `<div class="psub">${sub}</div>` : ""}
       </div>
       <div class="pright">
         <div class="prec">${fmtRec(rc)}</div>
@@ -256,7 +256,7 @@ function renderAll(rows) {
     const lead = isLeader("all", r.name, played);
     const st = r.streak.all;
     const sub = played
-      ? (st >= 2 ? `<span class="streak">${st} straight</span>` : "") + dots(r.seq.all)
+      ? streakBadge(st)
       : '<span class="nodata">No results yet</span>';
 
     const half = (lab, rc, p) => `<div class="sp">
@@ -270,7 +270,7 @@ function renderAll(rows) {
         <div class="pnum">${i + 1}</div>
         <div class="pmain">
           <div class="pnm">${esc(r.name)}${lead ? '<span class="crown">&#9733;</span>' : ""}</div>
-          <div class="psub">${sub}</div>
+          ${sub ? `<div class="psub">${sub}</div>` : ""}
         </div>
         <div class="pright">
           <div class="prec">${fmtRec(r.all)}</div>
@@ -317,11 +317,10 @@ function personWeeks(name) {
   }).join("");
 }
 
-function dots(seq) {
-  const last = (seq || []).filter(m => m !== null).slice(-5);
-  if (!last.length) return "";
-  return '<div class="dots">' + last.map(m =>
-    `<span class="dot ${m === "W" ? "w" : "l"}">${m}</span>`).join("") + "</div>";
+/* Spelled out rather than a row of letters. Nothing shows below two. */
+function streakBadge(n) {
+  if (n < 2) return "";
+  return `<span class="streak">${n} Straight Wins</span>`;
 }
 
 function renderHistory(key, name) {
