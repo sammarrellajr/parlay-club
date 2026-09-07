@@ -310,14 +310,18 @@ function defaultLeagueAndDate() {
 function setLeague(key, snapDate) {
   LG = key;
   [...$("lgSeg").children].forEach(c => c.classList.toggle("on", c.dataset.lg === key));
-  if (snapDate && !dateTouched) $("date").value = iso(mostRecent(key === "nfl" ? 0 : 6));
+  if (snapDate && !dateTouched) $("date").value = defaultDateFor(key);
   updateDateHint();
 }
 
-function mostRecent(targetDow) {
-  const now = new Date();
-  const back = (now.getDay() - targetDow + 7) % 7;
-  return new Date(now.getFullYear(), now.getMonth(), now.getDate() - back);
+/* The football week runs Thursday to Monday, so Thursday and Friday belong to
+   the weekend coming up, not the one just played. Anchor on that Saturday and
+   put NFL on the Sunday after it. */
+function defaultDateFor(key) {
+  const sat = parseISO(weekendKey(iso(new Date())));
+  if (!sat) return "";
+  if (key === "nfl") sat.setDate(sat.getDate() + 1);
+  return iso(sat);
 }
 
 function iso(d) {
