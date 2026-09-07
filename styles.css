@@ -197,6 +197,13 @@ button { touch-action: manipulation; }
 
 /* ---------- section heads ---------- */
 
+/* Draws the line between the summary up top and the people below it. */
+.rule {
+  height: 1px;
+  background: var(--line);
+  margin: 3px 2px 16px;
+}
+
 .sec-head {
   display: flex;
   align-items: baseline;
