@@ -70,6 +70,9 @@ button { touch-action: manipulation; }
 @media (display-mode: window-controls-overlay) {
   .top { padding-top: calc(env(titlebar-area-height, 34px) + 10px); }
 }
+/* Set by app.js when a Home Screen install reports no safe-area inset at all,
+   which leaves the header sitting under the status bar. */
+.no-safe-inset .top { padding-top: 56px; }
 
 .bar {
   display: flex;
