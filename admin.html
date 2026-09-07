@@ -70,6 +70,23 @@ details.card.fold:not([open]) { padding-bottom: 6px; }
 .chead { display: flex; align-items: baseline; gap: 10px; }
 .chead h2 { margin: 0; }
 
+/* The pick reads on the left, the verdict buttons sit on the right, so the
+   thumb lands in the same place for every guy. */
+.leg { display: grid; grid-template-columns: 1fr 104px; gap: 10px; align-items: start; }
+.legL { min-width: 0; }
+.leg .wl { grid-template-columns: 1fr 1fr; gap: 6px; }
+.leg .wl button { height: 42px; }
+.leg .wl button.pend { grid-column: 1 / -1; font-size: 10.5px; letter-spacing: 0.3px; }
+.legL .pick-in { margin-top: 0; }
+
+/* the slate share sits under the results share, with its own heading */
+.sharesplit { margin-top: 16px; border-top: 1px solid var(--line); padding-top: 14px; }
+.sharesplit h3 {
+  margin: 0 0 3px;
+  font-size: 10.5px; font-weight: 800; letter-spacing: 0.9px;
+  text-transform: uppercase; color: var(--dim);
+}
+
 /* Guided pick entry. The chips choose a shape, the boxes fill it in, and the
    plain field underneath always shows exactly what gets saved. */
 .modes { display: flex; gap: 6px; margin-top: 8px; }
@@ -220,6 +237,17 @@ details.card.fold:not([open]) { padding-bottom: 6px; }
       </div>
       <div class="shot" id="sharePrev" hidden></div>
       <div class="hint" id="shareHint">The link to the site goes along with the image.</div>
+
+      <div class="sharesplit">
+        <h3>Just the picks</h3>
+        <p class="cs">One image of all five legs, to send round before kickoff.</p>
+        <select id="slateWk"></select>
+        <div class="two" style="margin-top:10px">
+          <button class="btn primary" id="slateBtn">Share the slate</button>
+          <button class="btn" id="slatePrev">Preview</button>
+        </div>
+        <div class="shot" id="slateShot" hidden></div>
+      </div>
     </details>
 
     <details class="card fold" id="acct" style="margin-top:14px">
@@ -485,67 +513,67 @@ function buildForm(entry) {
     return `<div class="ebox" data-player="${esc(p)}">
       <div class="ename">${esc(p)}</div>
       <div class="leg">
-        <div class="leg-top">
-          <span class="wl">
-            <button type="button" data-v="W" class="${v.result === "W" ? "on-w" : ""}">W</button>
-            <button type="button" data-v="L" class="${v.result === "L" ? "on-l" : ""}">L</button>
-            <button type="button" data-v="P" class="pend ${v.result === "P" ? "on-p" : ""}">PENDING</button>
-          </span>
-        </div>
-
-        <div class="modes">
-          <button type="button" data-m="ou">O/U</button>
-          <button type="button" data-m="sp">Spread</button>
-          <button type="button" data-m="prop">Prop</button>
-        </div>
-
-        <div class="bld" hidden>
-          <div class="bpart" data-part="ou" hidden>
-            <div class="teams">
-              <div class="tw">
-                <input type="text" class="tm" data-f="a" placeholder="Team" autocomplete="off"
-                  autocorrect="off" spellcheck="false" value="${esc(ou ? ou.a : "")}">
-                <div class="sugg" hidden></div>
-              </div>
-              <div class="slash">/</div>
-              <div class="tw">
-                <input type="text" class="tm" data-f="b" placeholder="Team" autocomplete="off"
-                  autocorrect="off" spellcheck="false" value="${esc(ou ? ou.b : "")}">
-                <div class="sugg" hidden></div>
-              </div>
-            </div>
-            <div class="nrow">
-              <span class="tog" data-t="ou">
-                <button type="button" data-val="Over" class="${!ou || ou.ou === "Over" ? "on" : ""}">Over</button>
-                <button type="button" data-val="Under" class="${ou && ou.ou === "Under" ? "on" : ""}">Under</button>
-              </span>
-              <input type="text" class="num" inputmode="decimal" placeholder="52.5"
-                autocomplete="off" spellcheck="false" value="${esc(ou ? ou.num : "")}">
-            </div>
+        <div class="legL">
+          <div class="pick-in">
+            <input type="text" class="pick" autocomplete="off" autocorrect="off" spellcheck="false"
+              placeholder="${lg.full} pick (optional)" value="${esc(v.pick || "")}">
+            <div class="sugg" hidden></div>
           </div>
 
-          <div class="bpart" data-part="sp" hidden>
-            <div class="tw">
-              <input type="text" class="tm" data-f="s" placeholder="Team" autocomplete="off"
-                autocorrect="off" spellcheck="false" value="${esc(sp ? sp.team : "")}">
-              <div class="sugg" hidden></div>
+          <div class="modes">
+            <button type="button" data-m="ou">O/U</button>
+            <button type="button" data-m="sp">Spread</button>
+            <button type="button" data-m="prop">Prop</button>
+          </div>
+
+          <div class="bld" hidden>
+            <div class="bpart" data-part="ou" hidden>
+              <div class="teams">
+                <div class="tw">
+                  <input type="text" class="tm" data-f="a" placeholder="Team" autocomplete="off"
+                    autocorrect="off" spellcheck="false" value="${esc(ou ? ou.a : "")}">
+                  <div class="sugg" hidden></div>
+                </div>
+                <div class="slash">/</div>
+                <div class="tw">
+                  <input type="text" class="tm" data-f="b" placeholder="Team" autocomplete="off"
+                    autocorrect="off" spellcheck="false" value="${esc(ou ? ou.b : "")}">
+                  <div class="sugg" hidden></div>
+                </div>
+              </div>
+              <div class="nrow">
+                <span class="tog" data-t="ou">
+                  <button type="button" data-val="Over" class="${!ou || ou.ou === "Over" ? "on" : ""}">Over</button>
+                  <button type="button" data-val="Under" class="${ou && ou.ou === "Under" ? "on" : ""}">Under</button>
+                </span>
+                <input type="text" class="num" inputmode="decimal" placeholder="52.5"
+                  autocomplete="off" spellcheck="false" value="${esc(ou ? ou.num : "")}">
+              </div>
             </div>
-            <div class="nrow">
-              <span class="tog" data-t="sg">
-                <button type="button" data-val="-" class="${!sp || sp.sg === "-" ? "on" : ""}">&minus;</button>
-                <button type="button" data-val="+" class="${sp && sp.sg === "+" ? "on" : ""}">+</button>
-              </span>
-              <input type="text" class="num" inputmode="decimal" placeholder="7.5"
-                autocomplete="off" spellcheck="false" value="${esc(sp ? sp.num : "")}">
+
+            <div class="bpart" data-part="sp" hidden>
+              <div class="tw">
+                <input type="text" class="tm" data-f="s" placeholder="Team" autocomplete="off"
+                  autocorrect="off" spellcheck="false" value="${esc(sp ? sp.team : "")}">
+                <div class="sugg" hidden></div>
+              </div>
+              <div class="nrow">
+                <span class="tog" data-t="sg">
+                  <button type="button" data-val="-" class="${!sp || sp.sg === "-" ? "on" : ""}">&minus;</button>
+                  <button type="button" data-val="+" class="${sp && sp.sg === "+" ? "on" : ""}">+</button>
+                </span>
+                <input type="text" class="num" inputmode="decimal" placeholder="7.5"
+                  autocomplete="off" spellcheck="false" value="${esc(sp ? sp.num : "")}">
+              </div>
             </div>
           </div>
         </div>
 
-        <div class="pick-in">
-          <input type="text" class="pick" autocomplete="off" autocorrect="off" spellcheck="false"
-            placeholder="${lg.full} pick (optional)" value="${esc(v.pick || "")}">
-          <div class="sugg" hidden></div>
-        </div>
+        <span class="wl">
+          <button type="button" data-v="W" class="${v.result === "W" ? "on-w" : ""}">W</button>
+          <button type="button" data-v="L" class="${v.result === "L" ? "on-l" : ""}">L</button>
+          <button type="button" data-v="P" class="pend ${v.result === "P" ? "on-p" : ""}">PENDING</button>
+        </span>
       </div>
     </div>`;
   }).join("");
@@ -1013,6 +1041,20 @@ function renderShare() {
   $("shareCard").style.display = WEEKENDS.length ? "block" : "none";
   $("sharePrev").hidden = true;
   $("sharePrev").innerHTML = "";
+
+  // the slate picker is one slate at a time, newest first
+  const ssel = $("slateWk");
+  const skeep = ssel.value;
+  ssel.innerHTML = DATA.entries.slice().reverse().map(e =>
+    `<option value="${esc(e.id)}">${esc(e.label)}</option>`).join("");
+  if (DATA.entries.some(e => e.id === skeep)) ssel.value = skeep;
+  $("slateShot").hidden = true;
+  $("slateShot").innerHTML = "";
+}
+
+function pickedSlate() {
+  return DATA.entries.find(e => e.id === $("slateWk").value) ||
+         DATA.entries[DATA.entries.length - 1] || null;
 }
 
 function pickedWeekend() {
@@ -1071,6 +1113,54 @@ $("shareBtn").addEventListener("click", async () => {
     if (e && e.name === "AbortError") return;   // he backed out of the sheet
     say("err", "Share failed: " + e.message);
   }
+});
+
+/* Hand a canvas to the share sheet, or save it when there is not one. */
+async function shareCanvas(cv, name, text, url) {
+  let blob;
+  try { blob = await cardBlob(cv); }
+  catch (e) { say("err", "Could not build the image."); return; }
+  const file = new File([blob], name, { type: "image/png" });
+  try {
+    if (navigator.canShare && navigator.canShare({ files: [file] })) {
+      await navigator.share({ files: [file], text });
+    } else if (navigator.share) {
+      await navigator.share({ text, url });
+      say("info", "Shared the link. This browser will not attach images.");
+    } else {
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = file.name;
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+      say("info", "Saved the image. This browser has no share sheet.");
+    }
+  } catch (e) {
+    if (e && e.name === "AbortError") return;
+    say("err", "Share failed: " + e.message);
+  }
+}
+
+$("slateBtn").addEventListener("click", async () => {
+  const e = pickedSlate();
+  if (!e) { say("err", "Nothing logged to share yet."); return; }
+  const url = siteUrl();
+  await shareCanvas(buildSlateCard(DATA, e, url),
+    "parlay-club-slate-" + e.id + ".png",
+    "Parlay Club - " + e.label + "\n" + url, url);
+});
+
+$("slatePrev").addEventListener("click", () => {
+  const e = pickedSlate();
+  if (!e) return;
+  const box = $("slateShot");
+  box.innerHTML = "";
+  const img = new Image();
+  img.src = buildSlateCard(DATA, e, siteUrl()).toDataURL("image/png");
+  img.style.cssText =
+    "display:block;width:100%;margin-top:12px;border-radius:12px;border:1px solid var(--line)";
+  box.appendChild(img);
+  box.hidden = false;
 });
 
 /* ---------- this device ---------- */
