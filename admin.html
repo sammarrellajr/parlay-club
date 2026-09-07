@@ -40,6 +40,16 @@ details.fold[open] > summary::before { transform: rotate(90deg); }
 details.card.fold { padding-top: 6px; padding-bottom: 12px; }
 details.card.fold > summary { font-size: 15px; color: var(--text); font-weight: 720; }
 details.card.fold:not([open]) { padding-bottom: 6px; }
+
+/* The payout only appears once every leg is a win, so make it look like the
+   good news it is. */
+#payoutRow {
+  border: 1px solid #2f5c42;
+  background: linear-gradient(180deg, #16241c 0%, var(--panel-2) 80%);
+  border-radius: 12px;
+  padding: 12px 13px;
+}
+#payoutRow .fl { color: var(--accent-soft); }
 </style>
 </head>
 <body>
@@ -112,6 +122,13 @@ details.card.fold:not([open]) { padding-bottom: 6px; }
         <div class="assign" id="assign" hidden></div>
         <div class="hint" id="pasteHint">Labels, odds and venue lines get ignored.</div>
       </details>
+
+      <div id="payoutRow" style="display:none;margin-top:13px">
+        <label class="fl" for="payout">Parlay payout</label>
+        <input type="text" id="payout" inputmode="decimal" placeholder="0.00"
+          autocomplete="off" spellcheck="false">
+        <div class="hint">All five hit. What did the $<span id="stakeLbl">5</span> parlay pay?</div>
+      </div>
 
       <button class="btn wide" id="allPending" style="margin-top:12px">Mark all pending</button>
     </div>
@@ -243,6 +260,7 @@ async function commitFile(nextData, message) {
   const payload = {
     players: nextData.players,
     season: nextData.season,
+    stake: nextData.stake,
     entries: nextData.entries
   };
   const body = {
@@ -412,10 +430,22 @@ function buildForm(entry) {
       const already = btn.classList.contains("on-w") || btn.classList.contains("on-l") || btn.classList.contains("on-p");
       group.querySelectorAll("button").forEach(b => b.classList.remove("on-w", "on-l", "on-p"));
       if (!already) btn.classList.add(val === "W" ? "on-w" : val === "L" ? "on-l" : "on-p");
+      syncPayoutRow();
     });
   });
 
   $("entries").querySelectorAll(".pick").forEach(wireSuggest);
+  $("payout").value = entry && entry.payout ? String(entry.payout) : "";
+  syncPayoutRow();
+}
+
+/* The payout only means anything when every leg won, so it only shows then. */
+function syncPayoutRow() {
+  const boxes = [...$("entries").querySelectorAll(".ebox")];
+  const swept = boxes.length > 0 && boxes.every(b => b.querySelector(".on-w"));
+  $("payoutRow").style.display = swept ? "block" : "none";
+  $("stakeLbl").textContent = (DATA && DATA.stake) || 5;
+  if (!swept) $("payout").value = "";
 }
 
 /* Type-ahead under a pick field: prior picks first, then team names. */
@@ -462,7 +492,10 @@ function readForm() {
     if (result) marked++; else missing.push(player);   // pending counts as marked
     picks[player] = { result: result, pick: pick };
   });
-  return { picks, marked, missing };
+  const swept = Object.keys(picks).length > 0 &&
+    Object.keys(picks).every(p => picks[p].result === "W");
+  const payout = swept ? Math.max(0, parseFloat($("payout").value) || 0) : 0;
+  return { picks, marked, missing, payout };
 }
 
 /* ---------- ids ---------- */
@@ -496,13 +529,14 @@ function setAllPending() {
     wl.querySelectorAll("button").forEach(b => b.classList.remove("on-w", "on-l", "on-p"));
     wl.querySelector('[data-v="P"]').classList.add("on-p");
   });
+  syncPayoutRow();
 }
 
 /* ---------- save ---------- */
 $("save").addEventListener("click", async () => {
   const date = $("date").value;
   if (!date) { say("err", "Pick a date."); return; }
-  let { picks, marked, missing } = readForm();
+  let { picks, marked, missing, payout } = readForm();
 
   // Logging picks ahead of the games: nothing marked but the picks are filled in.
   if (marked === 0) {
@@ -514,7 +548,7 @@ $("save").addEventListener("click", async () => {
       return;
     }
     setAllPending();
-    ({ picks, marked, missing } = readForm());
+    ({ picks, marked, missing, payout } = readForm());
   }
 
   const dupes = existingFor(date, LG);
@@ -541,7 +575,7 @@ $("save").addEventListener("click", async () => {
     DATA = await fetchFile(); // refresh so we never clobber a newer save
     const id = EDITING || nextIdFor(date, LG);
     const label = entryLabel(date, LG) + suffixFor(date, LG);
-    const entry = { id, date, league: LG, label, picks };
+    const entry = { id, date, league: LG, label, picks, payout };
     const i = DATA.entries.findIndex(e => e.id === id);
     if (i >= 0) DATA.entries[i] = entry; else DATA.entries.push(entry);
     DATA.entries.sort((a, b) => a.date.localeCompare(b.date) || a.id.localeCompare(b.id));
@@ -574,6 +608,8 @@ function resetForm() {
   $("pasteHint").textContent = "Labels, odds and venue lines get ignored.";
   $("pasteFold").open = false;
   $("acct").open = false;
+  $("payout").value = "";
+  syncPayoutRow();
 }
 
 /* ---------- paste ---------- */
@@ -682,7 +718,8 @@ function renderPicker() {
         const r = (e.picks[n] || {}).result;
         if (r === "W") w++; else if (r === "L") l++; else if (r === "P") p++;
       });
-      const tail = w + "-" + l + (p ? ", " + p + " pending" : "");
+      const tail = w + "-" + l + (p ? ", " + p + " pending" : "") +
+        (e.payout ? " &middot; " + fmtMoney(e.payout) : "");
       return `<option value="${esc(e.id)}">${esc(e.label)} &middot; ${tail}</option>`;
     }).join("");
   sel.value = EDITING || "";
