@@ -66,6 +66,10 @@ details.card.fold:not([open]) { padding-bottom: 6px; }
 }
 .lrow.editing { background: #16241c; border-radius: 10px; padding-left: 9px; padding-right: 9px; }
 
+/* The card heading and its running count share a line. */
+.chead { display: flex; align-items: baseline; gap: 10px; }
+.chead h2 { margin: 0; }
+
 /* Guided pick entry. The chips choose a shape, the boxes fill it in, and the
    plain field underneath always shows exactly what gets saved. */
 .modes { display: flex; gap: 6px; margin-top: 8px; }
@@ -162,7 +166,10 @@ details.card.fold:not([open]) { padding-bottom: 6px; }
     </div>
 
     <div class="card">
-      <h2 id="editorTitle">New entry</h2>
+      <div class="chead">
+        <h2 id="editorTitle">New entry</h2>
+        <span class="fcount" id="entriesCount"></span>
+      </div>
       <p class="cs" id="editorSub">Pick the date, then tap W, L or Pending for each guy.</p>
 
       <label class="fl" for="date">Date</label>
@@ -185,6 +192,8 @@ details.card.fold:not([open]) { padding-bottom: 6px; }
         <div class="hint" id="pasteHint">Labels, odds and venue lines get ignored.</div>
       </details>
 
+      <div id="entries" style="margin-top:14px"></div>
+
       <div id="payoutRow" style="display:none;margin-top:13px">
         <label class="fl" for="payout">Parlay payout</label>
         <input type="text" id="payout" inputmode="decimal" placeholder="0.00"
@@ -195,20 +204,15 @@ details.card.fold:not([open]) { padding-bottom: 6px; }
       <button class="btn wide" id="allPending" style="margin-top:12px">Mark all pending</button>
     </div>
 
-    <details class="card fold" id="entriesFold" open style="margin-top:14px">
-      <summary>Entries<span class="fcount" id="entriesCount"></span></summary>
-      <div id="entries" style="margin-top:10px"></div>
-    </details>
-
     <details class="card fold" id="histCard" style="margin-top:14px">
       <summary>History<span class="fcount" id="histCount"></span></summary>
       <p class="cs" style="margin-top:10px">Edit loads it back up top, payout included.</p>
       <div id="entryList"></div>
     </details>
 
-    <div class="card" id="shareCard" style="margin-top:14px">
-      <h2>Share update</h2>
-      <p class="cs">Builds an image of both slates and opens the share sheet.</p>
+    <details class="card fold" id="shareCard" style="margin-top:14px">
+      <summary>Share update</summary>
+      <p class="cs" style="margin-top:10px">Builds an image of both slates and opens the share sheet.</p>
       <select id="shareWk"></select>
       <div class="two" style="margin-top:10px">
         <button class="btn primary" id="shareBtn">Share update</button>
@@ -216,7 +220,7 @@ details.card.fold:not([open]) { padding-bottom: 6px; }
       </div>
       <div class="shot" id="sharePrev" hidden></div>
       <div class="hint" id="shareHint">The link to the site goes along with the image.</div>
-    </div>
+    </details>
 
     <details class="card fold" id="acct" style="margin-top:14px">
       <summary>This device</summary>
@@ -811,7 +815,6 @@ $("fillPicks").addEventListener("click", () => {
 
   ASSIGNED = autoAssign(PARSED, DATA.players, DATA);
   $("pasteFold").open = true;
-  $("entriesFold").open = true;      // the picks just landed, so show them
   renderAssign();
   applyAssign();
 
@@ -971,7 +974,6 @@ function editEntry(id) {
   buildForm(e);
   updateDateHint();
   renderEntries();               // highlight the row being worked on
-  $("entriesFold").open = true;  // the picks are what you came to fix
   window.scrollTo({ top: 0, behavior: "smooth" });
   say("info", "Editing " + e.label + ". The league is locked while editing.");
 }
