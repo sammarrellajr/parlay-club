@@ -50,6 +50,21 @@ details.card.fold:not([open]) { padding-bottom: 6px; }
   padding: 12px 13px;
 }
 #payoutRow .fl { color: var(--accent-soft); }
+
+/* Every entry, one block per league. */
+.lgroup { margin-top: 4px; }
+.lgroup + .lgroup { margin-top: 18px; }
+.lgroup h3 {
+  margin: 0 0 4px;
+  font-size: 10.5px; font-weight: 800; letter-spacing: 0.9px;
+  text-transform: uppercase; color: var(--dim);
+}
+.parlay-tag {
+  font-size: 9.5px; font-weight: 800; letter-spacing: 0.5px;
+  color: #0a1f12; background: var(--accent);
+  border-radius: 5px; padding: 2px 6px; margin-right: 6px;
+}
+.lrow.editing { background: #16241c; border-radius: 10px; padding-left: 9px; padding-right: 9px; }
 </style>
 </head>
 <body>
@@ -105,10 +120,7 @@ details.card.fold:not([open]) { padding-bottom: 6px; }
       <h2 id="editorTitle">New entry</h2>
       <p class="cs" id="editorSub">Pick the date, then tap W, L or Pending for each guy.</p>
 
-      <label class="fl" for="pickEntry">Working on</label>
-      <select id="pickEntry"></select>
-
-      <label class="fl" for="date" style="margin-top:11px">Date</label>
+      <label class="fl" for="date">Date</label>
       <input type="date" id="date">
       <div class="hint" id="dateHint"></div>
 
@@ -134,6 +146,12 @@ details.card.fold:not([open]) { padding-bottom: 6px; }
     </div>
 
     <div id="entries"></div>
+
+    <div class="card" id="everyCard" style="margin-top:14px">
+      <h2>Every entry</h2>
+      <p class="cs">Edit loads it back up top, payout included.</p>
+      <div id="entryList"></div>
+    </div>
 
     <div class="card" id="shareCard" style="margin-top:14px">
       <h2>Share update</h2>
@@ -597,7 +615,6 @@ function resetForm() {
   $("editorTitle").textContent = "New entry";
   $("secondary").style.display = "none";
   $("save").textContent = "Save entry";
-  $("pickEntry").value = "";
   defaultLeagueAndDate();
   buildForm();
   $("pasteBox").value = "";
@@ -702,34 +719,42 @@ $("clearPaste").addEventListener("click", () => {
    things that depend on the data. */
 function renderList() {
   renderQueue();
-  renderPicker();
+  renderEntries();
   renderShare();
 }
 
-/* Every entry from both leagues, newest first. This is the only list, and it
-   ignores the league toggle, so a mistake in either one loads back without
-   flipping the toggle first. */
-function renderPicker() {
-  const sel = $("pickEntry");
-  sel.innerHTML = '<option value="">New entry</option>' +
-    DATA.entries.slice().reverse().map(e => {
-      let w = 0, l = 0, p = 0;
-      DATA.players.forEach(n => {
-        const r = (e.picks[n] || {}).result;
-        if (r === "W") w++; else if (r === "L") l++; else if (r === "P") p++;
-      });
-      const tail = w + "-" + l + (p ? ", " + p + " pending" : "") +
-        (e.payout ? " &middot; " + fmtMoney(e.payout) : "");
-      return `<option value="${esc(e.id)}">${esc(e.label)} &middot; ${tail}</option>`;
-    }).join("");
-  sel.value = EDITING || "";
-}
+/* Every entry, newest first, split by league so either one can be corrected
+   without touching the league toggle. */
+function renderEntries() {
+  const el = $("entryList");
+  el.innerHTML = LEAGUES.map(lg => {
+    const list = DATA.entries.filter(e => e.league === lg.key).reverse();
+    const body = list.length
+      ? list.map(e => {
+          let w = 0, l = 0, p = 0;
+          DATA.players.forEach(n => {
+            const r = (e.picks[n] || {}).result;
+            if (r === "W") w++; else if (r === "L") l++; else if (r === "P") p++;
+          });
+          const swept = isParlay(DATA, e);
+          const money = e.payout ? fmtMoney(e.payout)
+            : swept ? "payout not entered" : "";
+          return `<div class="lrow${EDITING === e.id ? " editing" : ""}">
+            <div>
+              <div class="lt">${swept ? '<span class="parlay-tag">PARLAY</span>' : ""}${esc(e.label)}</div>
+              <div class="lm">${w}-${l}${p ? " &middot; " + p + " pending" : ""}${
+                money ? " &middot; " + esc(money) : ""}</div>
+            </div>
+            <button class="btn sm" data-edit="${esc(e.id)}">Edit</button>
+          </div>`;
+        }).join("")
+      : '<div class="hint">Nothing logged yet.</div>';
+    return `<div class="lgroup"><h3>${esc(lg.full)}</h3>${body}</div>`;
+  }).join("");
 
-$("pickEntry").addEventListener("change", () => {
-  const id = $("pickEntry").value;
-  if (!id) { resetForm(); renderList(); say(""); return; }
-  editEntry(id);
-});
+  el.querySelectorAll("[data-edit]").forEach(b =>
+    b.addEventListener("click", () => editEntry(b.dataset.edit)));
+}
 
 /* Anything still carrying a pending pick, across both leagues. */
 function renderQueue() {
@@ -768,7 +793,7 @@ function editEntry(id) {
   $("save").textContent = "Update entry";
   buildForm(e);
   updateDateHint();
-  $("pickEntry").value = id;   // reached from the queue too
+  renderEntries();               // highlight the row being worked on
   window.scrollTo({ top: 0, behavior: "smooth" });
   say("info", "Editing " + e.label + ". The league is locked while editing.");
 }
