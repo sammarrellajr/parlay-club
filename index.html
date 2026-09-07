@@ -265,7 +265,9 @@ function render() {
     pend ? pend + " pending" : ""
   ].filter(Boolean).join(" · ");
 
-  if (key === "all") { renderAll(rows); renderHistory("all", "Overall"); return; }
+  const ladder = ladderColors(rows.map(r => r[key]));
+
+  if (key === "all") { renderAll(rows, ladder); renderHistory("all", "Overall"); return; }
 
   $("rows").innerHTML = rows.map((r, i) => {
     const rc = r[key];
@@ -283,8 +285,8 @@ function render() {
         ${sub ? `<div class="psub">${sub}</div>` : ""}
       </div>
       <div class="pright">
-        <div class="prec">${fmtRec(rc)}</div>
-        <div class="ppct ${pctClass(p, rc)}">${fmtPct(p, rc)}</div>
+        <div class="${rungClass(ladder[i])}"${rungStyle(ladder[i])}>${fmtRec(rc)}</div>
+        <div class="ppct">${fmtPct(p, rc)}</div>
       </div>
     </div>`;
   }).join("");
@@ -292,8 +294,15 @@ function render() {
   renderHistory(key, key === "cfb" ? "College" : "NFL");
 }
 
+/* A row's record wears its rung of the ladder. Nobody who has yet to play gets
+   a colour, so their record stays plain. */
+function rungClass(c) { return c ? "prec rung" : "prec"; }
+function rungStyle(c) {
+  return c ? ` style="color:rgb(${c[0]},${c[1]},${c[2]});background:rgba(${c[0]},${c[1]},${c[2]},0.13)"` : "";
+}
+
 /* One row per person carrying both records, expandable to their own weeks. */
-function renderAll(rows) {
+function renderAll(rows, ladder) {
   $("rows").innerHTML = rows.map((r, i) => {
     const played = r.all.w + r.all.l;
     const lead = isLeader("all", r.name, played);
@@ -316,8 +325,8 @@ function renderAll(rows) {
           ${sub ? `<div class="psub">${sub}</div>` : ""}
         </div>
         <div class="pright">
-          <div class="prec">${fmtRec(r.all)}</div>
-          <div class="ppct ${pctClass(r.allPct, r.all)}">${fmtPct(r.allPct, r.all)}</div>
+          <div class="${rungClass(ladder[i])}"${rungStyle(ladder[i])}>${fmtRec(r.all)}</div>
+          <div class="ppct">${fmtPct(r.allPct, r.all)}</div>
         </div>
         <span class="pchev">&#9654;</span>
       </div>
