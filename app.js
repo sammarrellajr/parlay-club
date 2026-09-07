@@ -104,7 +104,8 @@ function normalize(data) {
     }
   });
 
-  return { players, season: d.season || "", entries };
+  const stake = Number(d.stake);
+  return { players, season: d.season || "", stake: stake > 0 ? stake : 5, entries };
 }
 
 function cleanEntry(e) {
@@ -122,6 +123,7 @@ function cleanEntry(e) {
   return {
     id: e.id || (date + "-" + league),
     date, league, picks,
+    payout: Number(e.payout) > 0 ? Number(e.payout) : 0,   // only set on a parlay that cashed
     label: e.label || ""   // filled in by normalize so repeats get numbered
   };
 }
@@ -225,6 +227,11 @@ function computeStats(data) {
     summaries,
     parlays,
     settled,
+    money: {
+      cfb: moneyFor(data, "cfb"),
+      nfl: moneyFor(data, "nfl"),
+      all: moneyFor(data)
+    },
     counts: {
       cfb: data.entries.filter(e => e.league === "cfb").length,
       nfl: data.entries.filter(e => e.league === "nfl").length,
@@ -547,14 +554,44 @@ function weekendCell(entries, league, player) {
   };
 }
 
-/* Season to date, both leagues together. */
-function overallRec(data, player) {
+/* One player's record. Omit the league for both together. */
+function seasonRec(data, player, league) {
   const rec = blankRec();
   data.entries.forEach(e => {
+    if (league && e.league !== league) return;
     const r = (e.picks[player] || {}).result;
     if (r === "W") rec.w++; else if (r === "L") rec.l++;
   });
   return rec;
+}
+
+function overallRec(data, player) { return seasonRec(data, player, null); }
+
+/* Everyone plays the same parlay for the same stake, so the ledger is one
+   person's: every entry costs the stake, and a parlay that cashes pays out
+   whatever was entered for it. */
+function moneyFor(data, league) {
+  const stake = Number(data.stake) > 0 ? Number(data.stake) : 5;
+  let wagered = 0, won = 0, unpriced = 0;
+  data.entries.forEach(e => {
+    if (league && e.league !== league) return;
+    wagered += stake;
+    if (isParlay(data, e)) {
+      if (e.payout > 0) won += e.payout; else unpriced++;
+    }
+  });
+  return { wagered, won, net: won - wagered, unpriced, stake };
+}
+
+/* Every leg a win. */
+function isParlay(data, entry) {
+  return data.players.every(p => (entry.picks[p] || {}).result === "W");
+}
+
+/* "$62.50", "-$40", "$0" */
+function fmtMoney(n) {
+  const v = Math.abs(Math.round(n * 100) / 100);
+  return (n < 0 ? "-$" : "$") + (Number.isInteger(v) ? v : v.toFixed(2));
 }
 
 /* ---------- share card ---------- */
@@ -593,15 +630,38 @@ function cellColors(kind) {
   return [null, CARD.dim];
 }
 
-/* A PNG of one weekend: both slates per player, plus the season record. */
+/* Which leagues cashed a full parlay this weekend. */
+function weekendParlays(data, weekend) {
+  const hit = [];
+  ["cfb", "nfl"].forEach(lg => {
+    weekend.entries.filter(e => e.league === lg).forEach(e => {
+      if (isParlay(data, e)) hit.push({ league: lg, payout: e.payout });
+    });
+  });
+  return hit;
+}
+
+/* A PNG of one weekend: how each guy did on both slates, their season splits,
+   and the combined record everything is ranked by. */
 function buildShareCard(data, weekend, siteUrl) {
   const C = CARD;
+  const pad = C.pad, W = C.w;
+  const nameW = 210, colW = 150, cols = 5;
+  const tx = pad, tw = nameW + colW * cols;          // 210 + 750 = 960
+  const colMid = i => tx + nameW + colW * i + colW / 2;
+  const splitX = tx + nameW + colW * 2;              // weekend | season divider
+
   const rows = data.players.map(p => ({
     name: p,
-    cfb: weekendCell(weekend.entries, "cfb", p),
-    nfl: weekendCell(weekend.entries, "nfl", p),
+    wkCfb: weekendCell(weekend.entries, "cfb", p),
+    wkNfl: weekendCell(weekend.entries, "nfl", p),
+    sCfb: seasonRec(data, p, "cfb"),
+    sNfl: seasonRec(data, p, "nfl"),
     all: overallRec(data, p)
-  }));
+  })).sort((a, b) => {
+    const pa = pct(a.all), pb = pct(b.all);
+    return (pb - pa) || (b.all.w - a.all.w) || a.name.localeCompare(b.name);
+  });
 
   let gw = 0, gl = 0, gp = 0;
   weekend.entries.forEach(e => data.players.forEach(p => {
@@ -609,82 +669,116 @@ function buildShareCard(data, weekend, siteUrl) {
     if (r === "W") gw++; else if (r === "L") gl++; else if (r === "P") gp++;
   }));
 
-  const tableY = C.pad + 168;
-  const tableH = C.headH + rows.length * C.rowH;
-  const footY = tableY + tableH + 52;
-  const height = footY + 40 + C.pad;
+  const hits = weekendParlays(data, weekend);
+  const money = moneyFor(data);
+
+  const headH = 84, rowH = 92;
+  const stickerY = pad + 152;
+  const stickerH = hits.length ? 84 : 0;
+  const tableY = stickerY + stickerH + (hits.length ? 20 : 0);
+  const tableH = headH + rows.length * rowH;
+  const footY = tableY + tableH + 50;
+  const height = footY + 42 + pad;
 
   const cv = document.createElement("canvas");
-  cv.width = C.w;
+  cv.width = W;
   cv.height = height;
   const ctx = cv.getContext("2d");
 
   ctx.fillStyle = C.bg;
-  ctx.fillRect(0, 0, C.w, height);
+  ctx.fillRect(0, 0, W, height);
   ctx.textBaseline = "middle";
 
-  // header
+  /* ---- header ---- */
   ctx.textAlign = "left";
   ctx.fillStyle = C.text;
   ctx.font = cardFont(700, 54);
-  ctx.fillText("Parlay Club", C.pad, C.pad + 36);
+  ctx.fillText("Parlay Club", pad, pad + 36);
   ctx.fillStyle = C.muted;
   ctx.font = cardFont(500, 34);
-  ctx.fillText(weekend.label, C.pad, C.pad + 92);
+  ctx.fillText(weekend.label, pad, pad + 92);
 
   ctx.textAlign = "right";
   ctx.fillStyle = C.dim;
   ctx.font = cardFont(600, 22);
-  ctx.fillText("THIS WEEKEND", C.w - C.pad, C.pad + 26);
+  ctx.fillText("THIS WEEKEND", W - pad, pad + 26);
   ctx.fillStyle = gw > gl ? C.win : gl > gw ? C.loss : C.text;
   ctx.font = cardFont(700, 52);
-  ctx.fillText(gw + "-" + gl, C.w - C.pad, C.pad + 74);
+  ctx.fillText(gw + "-" + gl, W - pad, pad + 74);
   if (gp) {
     ctx.fillStyle = C.gold;
     ctx.font = cardFont(600, 24);
-    ctx.fillText(gp + " still pending", C.w - C.pad, C.pad + 122);
+    ctx.fillText(gp + " still pending", W - pad, pad + 122);
   }
 
-  // table shell
-  const tx = C.pad, tw = C.w - C.pad * 2;
+  /* ---- the sticker, when a parlay actually cashed ---- */
+  if (hits.length) {
+    const sw = (tw - (hits.length - 1) * 16) / hits.length;
+    hits.forEach((h, i) => {
+      const x = tx + i * (sw + 16);
+      ctx.fillStyle = "#123a22";
+      roundRect(ctx, x, stickerY, sw, stickerH, 18);
+      ctx.fill();
+      ctx.strokeStyle = C.win;
+      ctx.lineWidth = 3;
+      roundRect(ctx, x + 1.5, stickerY + 1.5, sw - 3, stickerH - 3, 17);
+      ctx.stroke();
+
+      ctx.textAlign = "center";
+      ctx.fillStyle = C.win;
+      ctx.font = cardFont(800, hits.length > 1 ? 30 : 36);
+      const label = (h.league === "cfb" ? "COLLEGE" : "NFL") + " PARLAY HIT";
+      ctx.fillText(label, x + sw / 2, stickerY + (h.payout ? 32 : stickerH / 2));
+      if (h.payout) {
+        ctx.fillStyle = "#a7f5c8";
+        ctx.font = cardFont(700, 26);
+        ctx.fillText("+" + fmtMoney(h.payout), x + sw / 2, stickerY + 62);
+      }
+    });
+  }
+
+  /* ---- table shell ---- */
   ctx.fillStyle = C.panel;
   roundRect(ctx, tx, tableY, tw, tableH, 24);
   ctx.fill();
 
-  const colW = (tw - C.nameW) / 3;
-  const colMid = i => tx + C.nameW + colW * i + colW / 2;
-
-  // column headings
+  // group headings, then the column names beneath them
   ctx.textAlign = "center";
   ctx.fillStyle = C.dim;
-  ctx.font = cardFont(600, 22);
-  ["COLLEGE", "NFL", "OVERALL"].forEach((h, i) =>
-    ctx.fillText(h, colMid(i), tableY + C.headH / 2 + 1));
+  ctx.font = cardFont(700, 20);
+  ctx.fillText("THIS WEEKEND", tx + nameW + colW, tableY + 26);
+  ctx.fillText("SEASON", tx + nameW + colW * 3.5, tableY + 26);
+
+  ctx.font = cardFont(600, 19);
+  ["COLLEGE", "NFL", "COLLEGE", "NFL", "TOTAL"].forEach((h, i) =>
+    ctx.fillText(h, colMid(i), tableY + 60));
 
   ctx.fillStyle = C.line;
-  ctx.fillRect(tx, tableY + C.headH, tw, 1);
+  ctx.fillRect(tx, tableY + headH, tw, 1);
+  // the divider between what happened this weekend and the season so far
+  ctx.fillRect(splitX, tableY + 12, 1, tableH - 24);
 
   rows.forEach((r, i) => {
-    const y = tableY + C.headH + i * C.rowH;
-    const mid = y + C.rowH / 2;
-    if (i) ctx.fillStyle = C.line, ctx.fillRect(tx + 28, y, tw - 56, 1);
+    const y = tableY + headH + i * rowH;
+    const mid = y + rowH / 2;
+    if (i) { ctx.fillStyle = C.line; ctx.fillRect(tx + 24, y, tw - 48, 1); }
 
     ctx.textAlign = "left";
     ctx.fillStyle = C.text;
-    ctx.font = cardFont(600, 38);
-    ctx.fillText(r.name, tx + 34, mid);
+    ctx.font = cardFont(600, 34);
+    ctx.fillText(r.name, tx + 30, mid);
 
-    [r.cfb, r.nfl].forEach((cell, k) => {
+    // this weekend
+    [r.wkCfb, r.wkNfl].forEach((cell, k) => {
       const [bg, fg] = cellColors(cell.kind);
       const cx = colMid(k);
-      // A leg still waiting on its game reads as quiet small text, not a result.
       const waiting = cell.kind === "P";
-      const size = waiting ? 22 : (cell.text.length > 2 ? 26 : 32);
+      const size = waiting ? 20 : (cell.text.length > 2 ? 24 : 30);
       if (bg) {
-        const pw = waiting ? 124 : (cell.text.length > 2 ? 132 : 84);
-        const ph = waiting ? 40 : 52;
+        const pw = waiting ? 112 : (cell.text.length > 2 ? 116 : 78);
+        const ph = waiting ? 38 : 50;
         ctx.fillStyle = bg;
-        roundRect(ctx, cx - pw / 2, mid - ph / 2, pw, ph, waiting ? 11 : 14);
+        roundRect(ctx, cx - pw / 2, mid - ph / 2, pw, ph, waiting ? 10 : 13);
         ctx.fill();
       }
       ctx.textAlign = "center";
@@ -693,22 +787,30 @@ function buildShareCard(data, weekend, siteUrl) {
       ctx.fillText(cell.text, cx, mid + 1);
     });
 
-    const played = r.all.w + r.all.l;
-    ctx.textAlign = "center";
-    ctx.fillStyle = !played ? C.dim : r.all.w > r.all.l ? C.win : r.all.w < r.all.l ? C.loss : C.text;
-    ctx.font = cardFont(700, 36);
-    ctx.fillText(played ? r.all.w + "-" + r.all.l : "—", colMid(2), mid);
+    // season splits, then the combined record the sort runs on
+    const rec = (rc, k, big) => {
+      const played = rc.w + rc.l;
+      ctx.textAlign = "center";
+      ctx.fillStyle = !played ? C.dim
+        : rc.w > rc.l ? C.win : rc.w < rc.l ? C.loss : C.text;
+      ctx.font = cardFont(big ? 800 : 600, big ? 32 : 27);
+      ctx.fillText(played ? fmtRec(rc) : "—", colMid(k), mid);
+    };
+    rec(r.sCfb, 2, false);
+    rec(r.sNfl, 3, false);
+    rec(r.all, 4, true);
   });
 
-  // footer
+  /* ---- footer ---- */
   ctx.textAlign = "left";
   ctx.fillStyle = C.dim;
-  ctx.font = cardFont(500, 26);
-  ctx.fillText(String(siteUrl || "").replace(/^https?:\/\//, "").replace(/\/$/, ""), C.pad, footY);
-  if (data.season) {
-    ctx.textAlign = "right";
-    ctx.fillText(data.season + " season", C.w - C.pad, footY);
-  }
+  ctx.font = cardFont(500, 24);
+  ctx.fillText(String(siteUrl || "").replace(/^https?:\/\//, "").replace(/\/$/, ""), pad, footY);
+
+  ctx.textAlign = "right";
+  ctx.font = cardFont(700, 26);
+  ctx.fillStyle = money.net > 0 ? C.win : money.net < 0 ? C.loss : C.muted;
+  ctx.fillText(fmtMoney(money.net) + " on the year", W - pad, footY);
 
   return cv;
 }
