@@ -61,6 +61,16 @@ button { touch-action: manipulation; }
   border-bottom: 1px solid rgba(35, 44, 58, 0.9);
 }
 
+/* Installed to the Dock or the taskbar there is no browser toolbar, so the
+   window's own title bar sits over the top of the page. Phones cover this with
+   the safe-area inset; desktops report none, so make the room explicitly. */
+@media (display-mode: standalone) and (pointer: fine) {
+  .top { padding-top: calc(30px + env(safe-area-inset-top)); }
+}
+@media (display-mode: window-controls-overlay) {
+  .top { padding-top: calc(env(titlebar-area-height, 34px) + 10px); }
+}
+
 .bar {
   display: flex;
   align-items: center;
