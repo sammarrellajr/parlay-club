@@ -12,6 +12,35 @@
 <link rel="icon" href="1A11D967-A164-4882-93CB-DDBCDE1E5593.png">
 <title>Parlay Club Admin</title>
 <link rel="stylesheet" href="styles.css">
+<style>
+/* Collapsible sections keep the page short: the picks are what matter, and
+   pasting and the token settings are occasional. */
+details.fold > summary {
+  list-style: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13.5px;
+  font-weight: 680;
+  color: var(--muted);
+  padding: 11px 0 3px;
+  user-select: none;
+  -webkit-user-select: none;
+  min-height: 40px;
+}
+details.fold > summary::-webkit-details-marker { display: none; }
+details.fold > summary::before {
+  content: "\25B8";
+  color: var(--dim);
+  font-size: 11px;
+  transition: transform 0.18s;
+}
+details.fold[open] > summary::before { transform: rotate(90deg); }
+details.card.fold { padding-top: 6px; padding-bottom: 12px; }
+details.card.fold > summary { font-size: 15px; color: var(--text); font-weight: 720; }
+details.card.fold:not([open]) { padding-bottom: 6px; }
+</style>
 </head>
 <body>
 <div class="app">
@@ -58,43 +87,40 @@
 
     <div class="card" id="queue" style="display:none">
       <h2>Needs results</h2>
-      <p class="cs">Entries you logged ahead of time. Tap to settle them.</p>
+      <p class="cs">Logged ahead of time. Tap to settle.</p>
       <div id="queueList"></div>
     </div>
 
     <div class="card">
       <h2 id="editorTitle">New entry</h2>
       <p class="cs" id="editorSub">Pick the date, then tap W, L or Pending for each guy.</p>
+
       <label class="fl" for="pickEntry">Working on</label>
       <select id="pickEntry"></select>
+
       <label class="fl" for="date" style="margin-top:11px">Date</label>
       <input type="date" id="date">
       <div class="hint" id="dateHint"></div>
-    </div>
 
-    <div class="card">
-      <h2>Paste picks</h2>
-      <p class="cs">Paste the slip, tap Fill picks, then fix the text and set who has what.</p>
-      <textarea id="pasteBox" rows="3" placeholder="Paste the whole slip, or one pick per line"></textarea>
-      <div class="two" style="margin-top:10px">
-        <button class="btn" id="fillPicks">Fill picks</button>
-        <button class="btn" id="allPending">All pending</button>
-      </div>
-      <div class="assign" id="assign" hidden></div>
-      <div class="hint" id="pasteHint">Paste the whole slip if you want. Labels, odds and venue lines get ignored.</div>
+      <details class="fold" id="pasteFold">
+        <summary>Paste a slip instead of typing</summary>
+        <textarea id="pasteBox" rows="3" placeholder="Paste the whole slip, or one pick per line"></textarea>
+        <div class="two" style="margin-top:10px">
+          <button class="btn" id="fillPicks">Fill picks</button>
+          <button class="btn" id="clearPaste">Clear</button>
+        </div>
+        <div class="assign" id="assign" hidden></div>
+        <div class="hint" id="pasteHint">Labels, odds and venue lines get ignored.</div>
+      </details>
+
+      <button class="btn wide" id="allPending" style="margin-top:12px">Mark all pending</button>
     </div>
 
     <div id="entries"></div>
 
-    <div class="card" style="margin-top:14px">
-      <h2 id="listTitle">Logged</h2>
-      <p class="cs">Newest first. Edit loads it back into the form.</p>
-      <div id="list"></div>
-    </div>
-
     <div class="card" id="shareCard" style="margin-top:14px">
       <h2>Share update</h2>
-      <p class="cs">Builds an image of both slates and opens the iPhone share sheet.</p>
+      <p class="cs">Builds an image of both slates and opens the share sheet.</p>
       <select id="shareWk"></select>
       <div class="two" style="margin-top:10px">
         <button class="btn primary" id="shareBtn">Share update</button>
@@ -104,22 +130,25 @@
       <div class="hint" id="shareHint">The link to the site goes along with the image.</div>
     </div>
 
-    <div class="card" id="acct" style="margin-top:14px">
-      <h2>This device</h2>
-      <p class="cs">Your token lives in this browser only. It is never in the repo.</p>
+    <details class="card fold" id="acct" style="margin-top:14px">
+      <summary>This device</summary>
+      <p class="cs" style="margin-top:10px">Your token lives in this browser only. It is never in the repo.</p>
       <div class="two">
         <button class="btn" id="showTok">Show token</button>
         <button class="btn danger" id="signOut">Sign out</button>
       </div>
       <div class="hint" id="tokOut">Signed in to <span id="whoRepo"></span>.</div>
-    </div>
+    </details>
 
     <div class="savebar">
       <div id="saveMsg" style="display:none;font-size:13px;font-weight:650;line-height:1.35;
         padding:9px 11px;border-radius:10px;margin-bottom:9px"></div>
       <button class="btn primary wide" id="save">Save entry</button>
       <div class="actions" id="secondary" style="margin-top:9px;display:none">
-        <button class="btn wide" id="cancelEdit">Cancel edit</button>
+        <div class="two">
+          <button class="btn" id="cancelEdit">Cancel</button>
+          <button class="btn danger" id="deleteBtn">Delete entry</button>
+        </div>
       </div>
     </div>
   </div>
@@ -287,6 +316,7 @@ async function connect(silent) {
   defaultLeagueAndDate();
   buildForm();
   renderList();
+  say("");
 
   const write = await canWrite();
   if (write === false) {
@@ -493,8 +523,8 @@ $("save").addEventListener("click", async () => {
       (LG === "cfb" ? "college" : "NFL") + " entr" + (dupes.length === 1 ? "y" : "ies") +
       ":\n\n" + dupes.map(e => e.label).join("\n") +
       "\n\nSave this as a separate entry #" + (dupes.length + 1) + "?" +
-      "\n\nTo correct the existing one, cancel and use Working on above.");
-    if (!ok) { say("info", "Nothing saved. Use Working on above to fix the existing entry."); return; }
+      "\n\nTo correct the existing one, cancel and pick it under Working on.");
+    if (!ok) { say("info", "Nothing saved. Pick it under Working on to fix the existing entry."); return; }
   }
 
   if (missing.length) {
@@ -541,7 +571,9 @@ function resetForm() {
   ASSIGNED = [];
   $("assign").hidden = true;
   $("assign").innerHTML = "";
-  $("pasteHint").textContent = "Paste the whole slip if you want. Labels, odds and venue lines get ignored.";
+  $("pasteHint").textContent = "Labels, odds and venue lines get ignored.";
+  $("pasteFold").open = false;
+  $("acct").open = false;
 }
 
 /* ---------- paste ---------- */
@@ -553,6 +585,7 @@ $("fillPicks").addEventListener("click", () => {
   if (!PARSED.length) { say("err", "Nothing that looks like a pick in that paste."); return; }
 
   ASSIGNED = autoAssign(PARSED, DATA.players, DATA);
+  $("pasteFold").open = true;
   renderAssign();
   applyAssign();
 
@@ -618,47 +651,28 @@ function applyAssign() {
 
 $("cancelEdit").addEventListener("click", () => { resetForm(); renderList(); say(""); window.scrollTo({ top: 0 }); });
 
-/* ---------- list ---------- */
+$("deleteBtn").addEventListener("click", () => { if (EDITING) deleteEntry(EDITING); });
+
+$("clearPaste").addEventListener("click", () => {
+  $("pasteBox").value = "";
+  PARSED = [];
+  ASSIGNED = [];
+  $("assign").hidden = true;
+  $("assign").innerHTML = "";
+  $("pasteHint").textContent = "Labels, odds and venue lines get ignored.";
+});
+
+/* The Working on picker is the whole list now, so a redraw is just the three
+   things that depend on the data. */
 function renderList() {
-  const el = $("list");
-  const list = DATA.entries.filter(e => e.league === LG);
-  $("listTitle").textContent = "Logged " + (LG === "cfb" ? "college" : "NFL");
-  if (!list.length) {
-    el.innerHTML = '<div class="hint">Nothing logged yet.</div>';
-    renderQueue();
-    renderPicker();
-    renderShare();
-    return;
-  }
-  el.innerHTML = list.slice().reverse().map(e => {
-    let win = 0, loss = 0, pend = 0;
-    DATA.players.forEach(p => {
-      const r = (e.picks[p] || {}).result;
-      if (r === "W") win++; else if (r === "L") loss++; else if (r === "P") pend++;
-    });
-    return `<div class="lrow">
-      <div>
-        <div class="lt">${esc(e.label)}</div>
-        <div class="lm">${win}-${loss} group${pend ? " &middot; " + pend + " pending" : ""}</div>
-      </div>
-      <div style="display:flex;gap:7px;flex:none">
-        <button class="btn sm" data-edit="${esc(e.id)}">Edit</button>
-        <button class="btn sm danger" data-del="${esc(e.id)}">Delete</button>
-      </div>
-    </div>`;
-  }).join("");
-
-  el.querySelectorAll("[data-edit]").forEach(b => b.addEventListener("click", () => editEntry(b.dataset.edit)));
-  el.querySelectorAll("[data-del]").forEach(b => b.addEventListener("click", () => deleteEntry(b.dataset.del)));
-
   renderQueue();
   renderPicker();
   renderShare();
 }
 
-/* Every entry from both leagues, newest first. The Logged list below is
-   filtered by the league toggle; this is not, so a mistake in either league
-   loads back without flipping the toggle first. */
+/* Every entry from both leagues, newest first. This is the only list, and it
+   ignores the league toggle, so a mistake in either one loads back without
+   flipping the toggle first. */
 function renderPicker() {
   const sel = $("pickEntry");
   sel.innerHTML = '<option value="">New entry</option>' +
@@ -717,7 +731,7 @@ function editEntry(id) {
   $("save").textContent = "Update entry";
   buildForm(e);
   updateDateHint();
-  $("pickEntry").value = id;   // reached from the list or queue too
+  $("pickEntry").value = id;   // reached from the queue too
   window.scrollTo({ top: 0, behavior: "smooth" });
   say("info", "Editing " + e.label + ". The league is locked while editing.");
 }
