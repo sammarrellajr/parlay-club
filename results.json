@@ -40,7 +40,6 @@
       "id": "2026-09-04-cfb",
       "date": "2026-09-04",
       "league": "cfb",
-      "label": "Fri 9/4 College",
       "picks": {
         "Drew": {
           "result": "W",
@@ -61,6 +60,35 @@
         "Tyler": {
           "result": "L",
           "pick": "Purdue -34.5"
+        }
+      },
+      "label": "Fri 9/4 College"
+    },
+    {
+      "id": "2026-09-05-cfb",
+      "date": "2026-09-05",
+      "league": "cfb",
+      "label": "Sat 9/5 College",
+      "picks": {
+        "Drew": {
+          "result": "P",
+          "pick": "Louisville/Ole Miss Over"
+        },
+        "Pat": {
+          "result": "W",
+          "pick": "Pittsburgh -16.5"
+        },
+        "Sam": {
+          "result": "W",
+          "pick": "Texas -29.5"
+        },
+        "Tim": {
+          "result": "W",
+          "pick": "Baylor/Aubrun Under"
+        },
+        "Tyler": {
+          "result": "W",
+          "pick": "Boise State +24.5"
         }
       }
     }
