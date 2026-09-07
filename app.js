@@ -712,3 +712,26 @@ function buildShareCard(data, weekend, siteUrl) {
 
   return cv;
 }
+
+/* ---------- iOS Home Screen status bar ---------- */
+
+/* Added to the Home Screen the page runs under the status bar, and iOS is
+   meant to report that as a safe-area inset. Some installs report none, so
+   the title gets drawn behind the clock. Measure the inset and only pad when
+   it really is missing, leaving phones that report it correctly alone. */
+function padForStatusBar() {
+  const standalone = window.navigator.standalone === true ||
+    (window.matchMedia && window.matchMedia("(display-mode: standalone)").matches);
+  if (!standalone || !document.body) return;
+
+  const probe = document.createElement("div");
+  probe.style.cssText = "position:fixed;top:0;left:0;width:1px;visibility:hidden;" +
+                        "pointer-events:none;height:env(safe-area-inset-top,0px)";
+  document.body.appendChild(probe);
+  const inset = probe.getBoundingClientRect().height;
+  probe.remove();
+
+  if (inset < 20) document.documentElement.classList.add("no-safe-inset");
+}
+
+padForStatusBar();
