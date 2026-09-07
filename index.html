@@ -398,8 +398,8 @@ function renderHistory(key, name) {
     return `<div class="wk${idx === 0 ? " open" : ""}">
       <div class="wk-head" onclick="this.parentNode.classList.toggle('open')">
         <span class="wk-t">${esc(e.label)}</span>
-        <span class="wk-m">${s.counted && s.perfect ? '<span class="sweep">SWEEP' +
-          (e.payout ? " " + fmtMoney(e.payout) : "") + '</span>' : ""}${
+        <span class="wk-m">${s.counted && s.perfect ? '<span class="sweep">PARLAY WIN' +
+          (e.payout ? ": " + fmtMoney(e.payout) : "") + '</span>' : ""}${
           s.pending ? `<span class="pend-chip">${s.pending} PENDING</span>` : ""}${s.w}-${s.l}<span class="chev">&#9654;</span></span>
       </div>
       <div class="wk-body">${body}</div>
