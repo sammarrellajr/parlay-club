@@ -349,10 +349,47 @@ const TEAMS = [
   "Stanford","Syracuse","TCU","Temple","Tennessee","Texas","Texas A&M","Texas Tech","Toledo",
   "Tulane","UCF","UCLA","UNLV","USC","Utah","Utah State","UTSA","Vanderbilt","Virginia",
   "Virginia Tech","Wake Forest","Washington","Washington State","West Virginia","Western Kentucky",
-  "Wisconsin","Wyoming",
-  // common non-team openers
-  "Over","Under"
+  "Wisconsin","Wyoming"
 ];
+
+/* Words that start a pick but are not teams, so they stay out of team fields. */
+const OPENERS = ["Over", "Under"];
+
+/* Team names only. The builder's team boxes and the half of a free-text pick
+   after a slash both want this and nothing else. */
+function suggestTeams(query, limit) {
+  const q = String(query || "").trim().toLowerCase();
+  if (!q) return [];
+  const hits = [];
+  const push = v => {
+    if (v.toLowerCase() === q) return;
+    if (!hits.includes(v)) hits.push(v);
+  };
+  TEAMS.filter(v => v.toLowerCase().startsWith(q)).forEach(push);
+  TEAMS.filter(v => !v.toLowerCase().startsWith(q) && v.toLowerCase().includes(q)).forEach(push);
+  return hits.slice(0, limit || 6);
+}
+
+/* Read a written pick back into the builder's boxes, so a correction does not
+   mean retyping it. Anything that fits neither shape is left as free text. */
+function parsePick(text) {
+  const t = String(text || "").trim();
+  if (!t) return null;
+
+  let m = t.match(/^(.+?)\s*\/\s*(.+?)\s+(over|under)(?:\s+([0-9.]+))?$/i);
+  if (m) {
+    return {
+      mode: "ou", a: m[1].trim(), b: m[2].trim(),
+      ou: m[3].toLowerCase() === "under" ? "Under" : "Over",
+      num: m[4] || ""
+    };
+  }
+
+  m = t.match(/^(.+?)\s*([+-])\s*([0-9.]+)$/);
+  if (m) return { mode: "sp", team: m[1].trim(), sg: m[2], num: m[3] };
+
+  return null;
+}
 
 /* Everything typed before, newest first, so repeats surface fast. */
 function priorPicks(data) {
@@ -367,8 +404,18 @@ function priorPicks(data) {
   return out;
 }
 
-/* Prior picks first (whole strings), then team names. */
+/* Prior picks first (whole strings), then team names. An over/under is written
+   "UNLV/Memphis Over 52.5", so once there is a slash the thing being typed is
+   the second team: complete that and hand back the whole line. */
 function suggestPicks(query, data, limit) {
+  const slash = query.lastIndexOf("/");
+  if (slash > -1) {
+    const head = query.slice(0, slash + 1);
+    const tail = query.slice(slash + 1);
+    if (!tail.trim()) return [];
+    return suggestTeams(tail, limit).map(t => head + t);
+  }
+
   const q = query.trim().toLowerCase();
   if (!q) return [];
   const hits = [];
@@ -379,11 +426,12 @@ function suggestPicks(query, data, limit) {
   const starts = v => v.toLowerCase().startsWith(q);
   const has = v => v.toLowerCase().includes(q);
 
+  const words = TEAMS.concat(OPENERS);
   const prior = data ? priorPicks(data) : [];
   prior.filter(starts).forEach(push);
-  TEAMS.filter(starts).forEach(push);
+  words.filter(starts).forEach(push);
   prior.filter(v => !starts(v) && has(v)).forEach(push);
-  TEAMS.filter(v => !starts(v) && has(v)).forEach(push);
+  words.filter(v => !starts(v) && has(v)).forEach(push);
   return hits.slice(0, limit || 6);
 }
 
