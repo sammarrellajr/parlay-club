@@ -73,6 +73,25 @@
 }
 .parlay.hit .plab, .parlay.hit .pval { color: var(--accent); }
 
+.icon-btn.sym {
+  width: 38px; min-width: 38px; padding: 0;
+  font-size: 19px; line-height: 1;
+}
+.icon-btn.sym.busy { color: var(--dim); }
+.icon-btn.sym.done { color: var(--accent); border-color: #2f5c42; }
+
+.admin-link {
+  display: block; text-align: center; margin-top: 9px;
+  font-size: 12px; font-weight: 650; color: var(--dim);
+  text-decoration: none; padding: 6px;
+}
+.admin-link:active { color: var(--muted); }
+
+.parlay.mini { padding: 9px 14px; margin-bottom: 12px; }
+.parlay.mini .plab { font-size: 10px; letter-spacing: 0.8px; }
+.parlay.mini .psubl { font-size: 10.5px; margin-top: 2px; }
+.parlay.mini .pval { font-size: 23px; letter-spacing: -0.8px; }
+
 .parlay.up { border-color: #2f5c42; }
 .parlay.up .pval { color: var(--accent); }
 .parlay.down { border-color: #5c3129; }
@@ -89,8 +108,7 @@
         <div class="sub-season" id="season"></div>
       </div>
       <div class="bar-actions">
-        <button class="icon-btn" id="refresh">Refresh</button>
-        <a class="icon-btn" href="admin.html">Admin</a>
+        <button class="icon-btn sym" id="refresh" aria-label="Refresh" title="Refresh">&#8635;</button>
       </div>
     </div>
     <div class="seg" id="seg">
@@ -121,6 +139,7 @@
   <div id="hist"></div>
 
   <p class="foot-note" id="foot"></p>
+  <a class="admin-link" href="admin.html">Admin</a>
 </div>
 
 <script src="app.js"></script>
@@ -141,7 +160,7 @@ function stamp() {
 /* quiet = no button state change, for the automatic refresh on reopen. */
 async function boot(quiet) {
   const btn = $("refresh");
-  if (!quiet) { btn.disabled = true; btn.textContent = "..."; }
+  if (!quiet) { btn.disabled = true; btn.classList.add("busy"); }
   $("err").classList.remove("show");
   try {
     DATA = await loadResults();
@@ -151,15 +170,19 @@ async function boot(quiet) {
     return;
   } finally {
     btn.disabled = false;
-    btn.textContent = "Refresh";
+    btn.classList.remove("busy");
   }
 
   // Two refreshes in the same minute leave the timestamp identical, so the
   // button itself confirms the tap landed.
   if (!quiet) {
-    btn.textContent = "Updated";
+    btn.textContent = "\u2713";
+    btn.classList.add("done");
     clearTimeout(boot.reset);
-    boot.reset = setTimeout(() => { btn.textContent = "Refresh"; }, 1400);
+    boot.reset = setTimeout(() => {
+      btn.textContent = "\u21BB";
+      btn.classList.remove("done");
+    }, 1400);
   }
 
   // Nothing on screen moves when the results are unchanged, so say so.
@@ -209,7 +232,7 @@ function render() {
      <div class="pval">${won}</div>`;
 
   const m = STATS.money[key];
-  $("money").className = "parlay" + (m.net > 0 ? " up" : m.net < 0 ? " down" : "");
+  $("money").className = "parlay mini" + (m.net > 0 ? " up" : m.net < 0 ? " down" : "");
   $("money").innerHTML =
     `<div>
        <div class="plab">${MONEY_LAB[key]}</div>
@@ -396,3 +419,4 @@ boot();
 </script>
 </body>
 </html>
+x
