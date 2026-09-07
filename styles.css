@@ -281,15 +281,22 @@ button { touch-action: manipulation; }
   letter-spacing: -0.3px;
 }
 
+/* The record sits on its rung of the ladder, same as the share image: best
+   green, worst red, everyone between through yellow. The colours arrive as
+   inline styles because they depend on where the row landed. */
+.prec.rung {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 9px;
+}
+
 .ppct {
   font-size: 11.5px;
   font-weight: 650;
   font-variant-numeric: tabular-nums;
-  margin-top: 1px;
+  margin-top: 3px;
+  color: var(--dim);
 }
-.ppct.good { color: var(--accent); }
-.ppct.bad { color: var(--loss); }
-.ppct.even { color: var(--muted); }
 
 .streak {
   display: inline-flex;
