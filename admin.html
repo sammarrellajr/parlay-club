@@ -169,6 +169,11 @@ details.card.fold:not([open]) { padding-bottom: 6px; }
       <input type="date" id="date">
       <div class="hint" id="dateHint"></div>
 
+      <label class="fl" for="note" style="margin-top:11px">Name it (optional)</label>
+      <input type="text" id="note" placeholder="Bonus, Thursday nighter, second slip"
+        autocomplete="off" spellcheck="false">
+      <div class="hint">For an extra parlay on top of the usual slate.</div>
+
       <details class="fold" id="pasteFold">
         <summary>Paste slip</summary>
         <textarea id="pasteBox" rows="3" placeholder="Paste the whole slip, or one pick per line"></textarea>
@@ -739,9 +744,9 @@ $("save").addEventListener("click", async () => {
     const ok = confirm("That date already has " + dupes.length + " " +
       (LG === "cfb" ? "college" : "NFL") + " entr" + (dupes.length === 1 ? "y" : "ies") +
       ":\n\n" + dupes.map(e => e.label).join("\n") +
-      "\n\nSave this as a separate entry #" + (dupes.length + 1) + "?" +
-      "\n\nTo correct the existing one, cancel and pick it under Working on.");
-    if (!ok) { say("info", "Nothing saved. Pick it under Working on to fix the existing entry."); return; }
+      "\n\nAdd this as another parlay on the same day?" +
+      "\n\nTo fix the existing one instead, cancel and hit Edit on it under History.");
+    if (!ok) { say("info", "Nothing saved. Hit Edit under History to fix the existing entry."); return; }
   }
 
   if (missing.length) {
@@ -757,7 +762,8 @@ $("save").addEventListener("click", async () => {
   try {
     DATA = await fetchFile(); // refresh so we never clobber a newer save
     const id = EDITING || nextIdFor(date, LG);
-    const label = entryLabel(date, LG) + suffixFor(date, LG);
+    const note = $("note").value.trim();
+    const label = entryLabel(date, LG) + suffixFor(date, LG) + (note ? " · " + note : "");
     const entry = { id, date, league: LG, label, picks, payout };
     const i = DATA.entries.findIndex(e => e.id === id);
     if (i >= 0) DATA.entries[i] = entry; else DATA.entries.push(entry);
@@ -780,6 +786,7 @@ function resetForm() {
   $("editorTitle").textContent = "New entry";
   $("secondary").style.display = "none";
   $("save").textContent = "Save entry";
+  $("note").value = "";
   defaultLeagueAndDate();
   buildForm();
   $("pasteBox").value = "";
@@ -881,8 +888,7 @@ $("clearPaste").addEventListener("click", () => {
   $("pasteHint").textContent = "Labels, odds and venue lines get ignored.";
 });
 
-/* The Working on picker is the whole list now, so a redraw is just the three
-   things that depend on the data. */
+/* Everything on screen that depends on the file, redrawn together. */
 function renderList() {
   renderQueue();
   renderEntries();
@@ -957,6 +963,8 @@ function editEntry(id) {
   dateTouched = true;
   setLeague(e.league, false);
   $("date").value = e.date || "";
+  // the label carries any name after a middle dot, so editing keeps it
+  $("note").value = String(e.label || "").split(" · ").slice(1).join(" · ");
   $("editorTitle").textContent = "Editing " + e.label;
   $("secondary").style.display = "grid";
   $("save").textContent = "Update entry";
