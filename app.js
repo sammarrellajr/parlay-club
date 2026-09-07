@@ -538,7 +538,7 @@ function weekendCell(entries, league, player) {
   if (!w && !l && !p) return { kind: "none", text: "—" };
 
   if (w + l + p === 1) {
-    if (p) return { kind: "P", text: "PEND" };
+    if (p) return { kind: "P", text: "pending" };
     return w ? { kind: "W", text: "W" } : { kind: "L", text: "L" };
   }
   return {
@@ -677,15 +677,19 @@ function buildShareCard(data, weekend, siteUrl) {
     [r.cfb, r.nfl].forEach((cell, k) => {
       const [bg, fg] = cellColors(cell.kind);
       const cx = colMid(k);
+      // A leg still waiting on its game reads as quiet small text, not a result.
+      const waiting = cell.kind === "P";
+      const size = waiting ? 22 : (cell.text.length > 2 ? 26 : 32);
       if (bg) {
-        const pw = cell.text.length > 2 ? 132 : 84;
+        const pw = waiting ? 124 : (cell.text.length > 2 ? 132 : 84);
+        const ph = waiting ? 40 : 52;
         ctx.fillStyle = bg;
-        roundRect(ctx, cx - pw / 2, mid - 26, pw, 52, 14);
+        roundRect(ctx, cx - pw / 2, mid - ph / 2, pw, ph, waiting ? 11 : 14);
         ctx.fill();
       }
       ctx.textAlign = "center";
       ctx.fillStyle = fg;
-      ctx.font = cardFont(700, cell.text.length > 2 ? 26 : 32);
+      ctx.font = cardFont(waiting ? 600 : 700, size);
       ctx.fillText(cell.text, cx, mid + 1);
     });
 
