@@ -244,27 +244,30 @@ details.fold.quiet[open] > summary { color: var(--muted); margin-bottom: 4px; }
         <h2 id="editorTitle">New entry</h2>
         <span class="fcount" id="entriesCount"></span>
       </div>
-      <p class="cs" id="editorSub">Pick the league and date, then add each guy's pick.</p>
 
-      <label class="fl">League</label>
-      <div class="seg tight" id="lgSeg">
-        <button data-lg="cfb" class="on">College</button>
-        <button data-lg="nfl">NFL</button>
-      </div>
+      <details class="fold" id="setupFold">
+        <summary>Slate<span class="fcount" id="setupSum"></span></summary>
 
-      <label class="fl" for="date" style="margin-top:11px">Date</label>
-      <input type="date" id="date">
-      <div class="hint" id="dateHint"></div>
+        <label class="fl">League</label>
+        <div class="seg tight" id="lgSeg">
+          <button data-lg="cfb" class="on">College</button>
+          <button data-lg="nfl">NFL</button>
+        </div>
 
-      <label class="fl" for="odds" style="margin-top:11px">Parlay odds (optional)</label>
-      <input type="text" id="odds" placeholder="+2750" inputmode="text"
-        autocomplete="off" autocapitalize="none" spellcheck="false">
-      <div class="hint" id="oddsHint">American odds off the slip.</div>
+        <label class="fl" for="date" style="margin-top:11px">Date</label>
+        <input type="date" id="date">
+        <div class="hint" id="dateHint"></div>
 
-      <label class="fl" for="note" style="margin-top:11px">Name it (optional)</label>
-      <input type="text" id="note" placeholder="Bonus, Thursday nighter, second slip"
-        autocomplete="off" spellcheck="false">
-      <div class="hint">For an extra parlay on top of the usual slate.</div>
+        <label class="fl" for="odds" style="margin-top:11px">Parlay odds (optional)</label>
+        <input type="text" id="odds" placeholder="+2750" inputmode="text"
+          autocomplete="off" autocapitalize="none" spellcheck="false">
+        <div class="hint" id="oddsHint">American odds off the slip.</div>
+
+        <label class="fl" for="note" style="margin-top:11px">Name it (optional)</label>
+        <input type="text" id="note" placeholder="Bonus, Thursday nighter, second slip"
+          autocomplete="off" spellcheck="false">
+        <div class="hint">For an extra parlay on top of the usual slate.</div>
+      </details>
 
       <details class="fold" id="pasteFold">
         <summary>Paste slip</summary>
@@ -287,6 +290,8 @@ details.fold.quiet[open] > summary { color: var(--muted); margin-bottom: 4px; }
       </div>
 
       <button class="btn wide" id="allPending" style="margin-top:12px">Mark all pending</button>
+      <button class="btn danger wide" id="deleteBtn"
+        style="margin-top:9px;display:none">Delete this entry</button>
     </div>
 
     <div class="card" id="shareCard" style="margin-top:14px">
@@ -325,12 +330,9 @@ details.fold.quiet[open] > summary { color: var(--muted); margin-bottom: 4px; }
     <div class="savebar" id="savebar" style="display:none">
       <div id="saveMsg" style="display:none;font-size:13px;font-weight:650;line-height:1.35;
         padding:9px 11px;border-radius:10px;margin-bottom:9px"></div>
-      <button class="btn primary wide" id="save">Save entry</button>
-      <div class="actions" id="secondary" style="margin-top:9px;display:none">
-        <div class="two">
-          <button class="btn" id="cancelEdit">Done</button>
-          <button class="btn danger" id="deleteBtn">Delete entry</button>
-        </div>
+      <div class="two" style="grid-template-columns:1fr 2fr">
+        <button class="btn" id="cancelEdit">Done</button>
+        <button class="btn primary" id="save">Save entry</button>
       </div>
     </div>
   </div>
@@ -549,9 +551,12 @@ function updateDateHint() {
   $("dateHint").textContent = dupes.length
     ? base + ". That date already has " + dupes.length + " logged."
     : base;
-  $("editorSub").textContent = EDITING
-    ? "Save as often as you like. This stays open until you hit Done."
-    : "Pick the league and date, then add each guy's pick.";
+
+  /* Shut, the fold still has to say what this slate is. */
+  const odds = fmtOdds($("odds").value);
+  $("setupSum").textContent = date
+    ? entryLabel(date, LG) + suffixFor(date, LG) + (odds ? " · " + odds : "")
+    : "pick a date";
 }
 
 $("lgSeg").addEventListener("click", e => {
@@ -661,10 +666,6 @@ function buildForm(entry) {
     syncRow(row);
   });
 
-  // a fresh slate opens on the first name, so the first pick goes straight in
-  const first = $("entries").querySelector(".ebox");
-  if (first && !entry) first.open = true;
-
   $("entries").querySelectorAll(".pick").forEach(i => wireSuggest(i));
   $("entries").querySelectorAll(".ebox").forEach(wireBuilder);
   $("payout").value = entry && entry.payout ? String(entry.payout) : "";
@@ -771,7 +772,7 @@ function syncPayoutRow() {
     ? marked + " of " + boxes.length + " marked" : "";
 }
 
-$("odds").addEventListener("input", syncPayoutRow);
+$("odds").addEventListener("input", () => { syncPayoutRow(); updateDateHint(); });
 
 /* Type-ahead under a field: prior picks first, then team names. Team boxes ask
    for teams only, and drop the name in without a trailing space. */
@@ -946,6 +947,7 @@ function resetForm() {
   $("assign").innerHTML = "";
   $("pasteHint").textContent = "Labels, odds and venue lines get ignored.";
   $("pasteFold").open = false;
+  $("setupFold").open = false;
   $("acct").open = false;
   $("payout").value = "";
   syncPayoutRow();
@@ -1082,6 +1084,8 @@ function editEntry(id) {
   $("save").textContent = "Update entry";
   buildForm(e);
   updateDateHint();
+  $("setupFold").open = false;   // it is already set; the picks are the job
+  $("pasteFold").open = false;
   renderInPlayBar();             // highlight the slate being worked on
   window.scrollTo({ top: 0, behavior: "smooth" });
   say("info", "Editing " + e.label + ". The league is locked while editing.");
@@ -1095,13 +1099,10 @@ function openEditor() {
   syncSecondary();
 }
 
-/* Done is there the whole time the editor is open, so a new entry can be
-   backed out of. Delete only makes sense once the slate exists. */
+/* Done and Save are always there. Delete only makes sense once the slate
+   exists, and it sits at the foot of the form rather than beside Save. */
 function syncSecondary() {
-  const solo = !EDITING;
-  $("secondary").style.display = "grid";
-  $("deleteBtn").style.display = solo ? "none" : "block";
-  $("secondary").querySelector(".two").style.gridTemplateColumns = solo ? "1fr" : "1fr 1fr";
+  $("deleteBtn").style.display = EDITING ? "block" : "none";
 }
 
 function closeEditor() {
