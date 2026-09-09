@@ -546,7 +546,7 @@ function renderHistory(key, name) {
         <span class="wk-t">${esc(e.label)}</span>
         <span class="wk-m">${settled(s) ? (s.perfect
           ? '<span class="sweep">PARLAY WIN' + (e.payout ? ": " + fmtMoney(e.payout) : "") + '</span>'
-          : '<span class="sweep miss">PARLAY LOSS</span>') : ""}${
+          : '<span class="sweep miss">PARLAY LOSS: ' + fmtMoney(DATA.stake) + '</span>') : ""}${
           s.pending ? `<span class="pend-chip">${s.pending} PENDING</span>` : ""}${s.w}-${s.l}<span class="chev">&#9654;</span></span>
       </div>
       <div class="wk-body">${body}
@@ -572,4 +572,4 @@ $("refresh").addEventListener("click", () => boot());
 boot();
 </script>
 </body>
-</html>
+</html>X
