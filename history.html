@@ -136,7 +136,7 @@ function render() {
     const meta = [
       live ? '<span class="live-tag">IN PLAY</span>' : "",
       hit ? '<span class="hit-tag">PARLAY WIN</span>' : "",
-      missed ? '<span class="miss-tag">PARLAY LOSS</span>' : "",
+      missed ? '<span class="miss-tag">PARLAY LOSS: ' + fmtMoney(DATA.stake) + '</span>' : "",
       live ? t.p + (t.p === 1 ? " leg" : " legs") + " to play" : "",
       e.payout ? fmtMoney(e.payout) + " back" : (back ? fmtOdds(e.odds) + " · pays " + fmtMoney(back) : ""),
       hit && !e.payout ? "payout not entered" : ""
@@ -200,4 +200,4 @@ async function shareSlate(id) {
 boot();
 </script>
 </body>
-</html>
+</html>X
