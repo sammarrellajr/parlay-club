@@ -119,6 +119,13 @@
 .ip-lab { font-size: 14px; font-weight: 700; flex: 1; min-width: 0;
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .ip-rec { font-size: 14px; font-weight: 800; font-variant-numeric: tabular-nums; flex: none; }
+/* The parlay price, when it was logged. No odds, no chip. */
+.ip-odds {
+  font-size: 11px; font-weight: 800; flex: none;
+  color: var(--gold-soft); background: var(--gold-bg);
+  border-radius: 5px; padding: 2px 6px;
+  font-variant-numeric: tabular-nums; white-space: nowrap;
+}
 .ip-sub { font-size: 11.5px; color: var(--gold-soft); margin-top: 3px; font-weight: 650; }
 
 .ip-legs { margin-top: 11px; display: grid; gap: 6px; }
@@ -285,14 +292,16 @@ function renderInPlay() {
              `<span class="ip-nm">${esc(p)}</span>` +
              `<span class="ip-pk${v.pick ? "" : " blank"}">${esc(v.pick || "no pick logged")}</span></div>`;
     }).join("");
+    const odds = fmtOdds(e.odds);
     const back = oddsReturn(e.odds, DATA.stake);
     return `<div class="ip">
       <div class="ip-top">
         <span class="ip-tag">IN PLAY</span>
         <span class="ip-lab">${esc(e.label)}</span>
+        ${odds ? `<span class="ip-odds">${esc(odds)}</span>` : ""}
         <span class="ip-rec">${t.w}-${t.l}</span>
       </div>
-      ${back ? `<div class="ip-sub">${esc(fmtOdds(e.odds))} &middot; pays ${fmtMoney(back)}</div>` : ""}
+      ${odds && back ? `<div class="ip-sub">${fmtMoney(DATA.stake)} returns ${fmtMoney(back)}</div>` : ""}
       <div class="ip-legs">${legs}</div>
       <button class="btn sm ip-share" data-slate="${esc(e.id)}">Share these picks</button>
     </div>`;
