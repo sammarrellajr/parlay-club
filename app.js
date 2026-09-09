@@ -268,7 +268,9 @@ function computeStats(data) {
       cfbPct: pct(s.cfb),
       nflPct: pct(s.nfl),
       allPct: pct(s.all),
-      streak: { cfb: winStreak(s.seq.cfb), nfl: winStreak(s.seq.nfl), all: winStreak(s.seq.all) }
+      streak: { cfb: winStreak(s.seq.cfb), nfl: winStreak(s.seq.nfl), all: winStreak(s.seq.all) },
+      best: { cfb: bestRun(s.seq.cfb), nfl: bestRun(s.seq.nfl), all: bestRun(s.seq.all) },
+      solo: soloLosses(data, p)
     };
   });
 
@@ -316,6 +318,28 @@ function winStreak(seq) {
     if (seq[i] === null) continue;
     if (seq[i] === "W") n++; else break;
   }
+  return n;
+}
+
+/* The longest run of wins anywhere in the season, not just the current one. */
+function bestRun(seq) {
+  let best = 0, n = 0;
+  seq.forEach(v => {
+    if (v === null) return;
+    if (v === "W") { n++; if (n > best) best = n; } else n = 0;
+  });
+  return best;
+}
+
+/* Slates where this one was the only loss: the parlay was 4-1 and he was the
+   1. The stat everyone in the group actually wants to know. */
+function soloLosses(data, player) {
+  let n = 0;
+  data.entries.forEach(e => {
+    if ((e.picks[player] || {}).result !== "L") return;
+    const rest = data.players.filter(p => p !== player);
+    if (rest.every(p => (e.picks[p] || {}).result === "W")) n++;
+  });
   return n;
 }
 
