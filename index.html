@@ -310,7 +310,7 @@ async function shareSlate(id) {
   const cv = buildSlateCard(DATA, e, url);
   const blob = await new Promise(res => cv.toBlob(res, "image/png"));
   const file = new File([blob], "parlay-club-slate-" + e.id + ".png", { type: "image/png" });
-  const text = "Parlay Club - " + e.label + "\n" + url;
+  const text = url;                        // the image says the rest
   const note = t => { $("info").textContent = t; $("info").classList.add("show"); };
   try {
     if (navigator.canShare && navigator.canShare({ files: [file] })) {
