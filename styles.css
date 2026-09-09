@@ -405,25 +405,29 @@ button { touch-action: manipulation; }
 }
 .wl-pick.blank { color: #414b5c; }
 
+/* Tinted, not filled. The record beside it is the number people read; the
+   chip only has to say which way the slate went. */
 .sweep {
-  font-size: 10px;
+  font-size: 9.5px;
   font-weight: 750;
-  color: #0a1f12;
-  background: var(--accent);
+  letter-spacing: 0.2px;
+  color: var(--accent-soft);
+  background: var(--accent-bg);
   border-radius: 5px;
-  padding: 2px 6px;
+  padding: 1.5px 5px;
+  white-space: nowrap;
 }
 
-/* the same chip in the light red off the share card's ladder */
-.sweep.miss { background: #f3a3a0; color: #2a0603; }
+.sweep.miss { background: var(--loss-bg); color: var(--loss-soft); }
 
 .pend-chip {
-  font-size: 10px;
+  font-size: 9.5px;
   font-weight: 750;
+  letter-spacing: 0.2px;
   color: var(--gold-soft);
   background: var(--gold-bg);
   border-radius: 5px;
-  padding: 2px 6px;
+  padding: 1.5px 5px;
   white-space: nowrap;
 }
 
@@ -681,4 +685,4 @@ textarea:focus { outline: none; border-color: #3f7dd6; box-shadow: 0 0 0 3px rgb
 @media (min-width: 430px) {
   .tile .val { font-size: 28px; }
   .pnm { font-size: 16px; }
-}
+}X
