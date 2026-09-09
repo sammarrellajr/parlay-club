@@ -42,6 +42,20 @@
 .spr.none { color: var(--dim); }
 
 .pdet { display: none; margin-top: 11px; border-top: 1px solid var(--line); padding-top: 9px; }
+
+/* Two stats worth arguing about, above the week-by-week. */
+.pstats { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; margin-bottom: 11px; }
+.pstat {
+  display: flex; align-items: baseline; justify-content: space-between; gap: 6px;
+  background: var(--panel-2); border: 1px solid var(--line);
+  border-radius: 10px; padding: 7px 10px; min-width: 0;
+}
+.psl {
+  font-size: 10px; font-weight: 750; letter-spacing: 0.6px;
+  text-transform: uppercase; color: var(--dim); white-space: nowrap;
+}
+.psv { font-size: 13.5px; font-weight: 700; color: var(--text); white-space: nowrap; }
+.psv.bad { color: var(--loss-soft); }
 .prow.all.open .pdet { display: block; }
 .drow { display: flex; align-items: center; gap: 9px; padding: 4px 0; }
 .dwk { font-size: 11px; color: var(--dim); width: 82px; flex: none; white-space: nowrap; }
@@ -153,6 +167,11 @@
 
   <div id="inplay"></div>
 
+  <div class="sec-head">
+    <h2 id="seasonTitle">Season</h2>
+    <span class="note" id="seasonNote"></span>
+  </div>
+
   <div class="parlay" id="parlay"></div>
 
   <div class="parlay" id="money"></div>
@@ -162,10 +181,12 @@
   <div class="rule"></div>
 
   <div class="sec-head">
-    <h2 id="secTitle">Standings</h2>
+    <h2 id="secTitle">Individual records</h2>
     <span class="note" id="secNote"></span>
   </div>
   <div class="rows" id="rows"></div>
+
+  <div class="rule"></div>
 
   <div class="sec-head">
     <h2 id="histTitle">History</h2>
@@ -244,7 +265,8 @@ function isLeader(key, name, played) {
 
 const LG_NAME = { all: "Overall", cfb: "College Football", nfl: "NFL" };
 const TILE_LAB = { all: "Group overall", cfb: "Group college", nfl: "Group NFL" };
-const PARLAY_LAB = { all: "Parlay wins", cfb: "College parlay wins", nfl: "NFL parlay wins" };
+const PARLAY_LAB = { all: "Season parlay wins", cfb: "Season college parlay wins",
+                     nfl: "Season NFL parlay wins" };
 const MONEY_LAB = { all: "Money on the year", cfb: "College money", nfl: "NFL money" };
 
 /* Anything still running goes at the very top, legs and all. */
@@ -270,8 +292,7 @@ function renderInPlay() {
         <span class="ip-lab">${esc(e.label)}</span>
         <span class="ip-rec">${t.w}-${t.l}</span>
       </div>
-      <div class="ip-sub">${t.p}${t.p === 1 ? " leg" : " legs"} still to play${
-        back ? " &middot; " + esc(fmtOdds(e.odds)) + " pays " + fmtMoney(back) : ""}</div>
+      ${back ? `<div class="ip-sub">${esc(fmtOdds(e.odds))} &middot; pays ${fmtMoney(back)}</div>` : ""}
       <div class="ip-legs">${legs}</div>
       <button class="btn sm ip-share" data-slate="${esc(e.id)}">Share these picks</button>
     </div>`;
@@ -356,7 +377,10 @@ function render() {
        <div class="foot">${esc(leaderFoot(ld))}</div>
      </div>`;
 
-  $("secTitle").textContent = LG_NAME[key];
+  // the tabs already say which league, so the heads stay put
+  $("seasonNote").textContent = n
+    ? n + (key === "all" ? (n === 1 ? " slate" : " slates")
+                         : (n === 1 ? " week" : " weeks")) : "";
   const hot = rows.filter(r => r.streak[key] >= 2).length;
   const pend = STATS.pending[key];
   $("secNote").textContent = [
@@ -380,7 +404,7 @@ function render() {
     return `<div class="prow${lead ? " lead" : ""}">
       <div class="pnum">${i + 1}</div>
       <div class="pmain">
-        <div class="pnm">${esc(r.name)}${lead ? '<span class="crown">&#9733;</span>' : ""}</div>
+        <div class="pnm">${esc(r.name)}</div>
         ${sub ? `<div class="psub">${sub}</div>` : ""}
       </div>
       <div class="pright">
@@ -420,7 +444,7 @@ function renderAll(rows, ladder) {
       <div class="ptop">
         <div class="pnum">${i + 1}</div>
         <div class="pmain">
-          <div class="pnm">${esc(r.name)}${lead ? '<span class="crown">&#9733;</span>' : ""}</div>
+          <div class="pnm">${esc(r.name)}</div>
           ${sub ? `<div class="psub">${sub}</div>` : ""}
         </div>
         <div class="pright">
@@ -433,7 +457,15 @@ function renderAll(rows, ladder) {
         ${half("College", r.cfb, r.cfbPct)}
         ${half("NFL", r.nfl, r.nflPct)}
       </div>
-      <div class="pdet">${personWeeks(r.name)}</div>
+      <div class="pdet">
+        <div class="pstats">
+          <div class="pstat"><span class="psl">Best run</span><span class="psv">${
+            r.best.all ? r.best.all + (r.best.all === 1 ? " win" : " straight") : "&mdash;"}</span></div>
+          <div class="pstat"><span class="psl">Only miss</span><span class="psv${
+            r.solo ? " bad" : ""}">${r.solo ? r.solo + (r.solo === 1 ? " slate" : " slates") : "never"}</span></div>
+        </div>
+        ${personWeeks(r.name)}
+      </div>
     </div>`;
   }).join("");
 
@@ -477,7 +509,7 @@ function streakBadge(n) {
 function renderHistory(key, name) {
   const el = $("hist");
   const list = key === "all" ? DATA.entries.slice() : DATA.entries.filter(e => e.league === key);
-  $("histTitle").textContent = key === "all" ? "Every entry" : name + " history";
+  $("histTitle").textContent = "History";
 
   if (!list.length) {
     el.innerHTML = key === "all"
