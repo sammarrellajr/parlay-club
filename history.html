@@ -35,6 +35,7 @@
 .hmeta { font-size: 12px; color: var(--dim); margin-top: 3px; }
 .hmeta .live-tag { color: var(--gold); font-weight: 750; }
 .hmeta .hit-tag { color: var(--accent); font-weight: 750; }
+.hmeta .miss-tag { color: #f3a3a0; font-weight: 750; }
 
 .hpicks { margin-top: 10px; display: grid; gap: 5px; }
 .hpick { display: flex; align-items: center; gap: 8px; min-width: 0; }
@@ -129,11 +130,13 @@ function render() {
     const t = tally(DATA, e);
     const live = t.p > 0;
     const hit = isParlay(DATA, e);
+    const missed = !live && !hit && t.w + t.l === DATA.players.length;
     const back = oddsReturn(e.odds, DATA.stake);
 
     const meta = [
       live ? '<span class="live-tag">IN PLAY</span>' : "",
       hit ? '<span class="hit-tag">PARLAY WIN</span>' : "",
+      missed ? '<span class="miss-tag">PARLAY LOSS</span>' : "",
       live ? t.p + (t.p === 1 ? " leg" : " legs") + " to play" : "",
       e.payout ? fmtMoney(e.payout) + " back" : (back ? fmtOdds(e.odds) + " · pays " + fmtMoney(back) : ""),
       hit && !e.payout ? "payout not entered" : ""
