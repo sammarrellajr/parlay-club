@@ -1054,8 +1054,17 @@ function buildSlateCard(data, entry, siteUrl) {
   let w = 0, l = 0, pend = 0;
   rows.forEach(r => { if (r.result === "W") w++; else if (r.result === "L") l++; else pend++; });
 
+  /* The odds ride at the top of the card when they were logged. When they
+     were not, the line is dropped and the header simply closes up. */
+  const stake = Number(data.stake) > 0 ? Number(data.stake) : 5;
+  const oddsTxt = fmtOdds(entry.odds);
+  const back = oddsReturn(entry.odds, stake);
+  const oddsLine = oddsTxt
+    ? oddsTxt + (back ? "   " + fmtMoney(stake) + " returns " + fmtMoney(back) : "")
+    : "";
+
   const rowH = r => (r.lines.length > 1 ? 128 : 96);
-  const tableY = pad + 150;
+  const tableY = pad + (oddsLine ? 196 : 150);
   const tableH = rows.reduce((n, r) => n + rowH(r), 0);
   const footY = tableY + tableH + 50;
   const height = footY + 42 + pad;
@@ -1077,6 +1086,11 @@ function buildSlateCard(data, entry, siteUrl) {
   ctx.fillStyle = C.muted;
   ctx.font = cardFont(500, 34);
   ctx.fillText(entry.label || "", pad, pad + 92);
+  if (oddsLine) {
+    ctx.fillStyle = C.gold;
+    ctx.font = cardFont(750, 32);
+    ctx.fillText(oddsLine, pad, pad + 148);
+  }
 
   /* A slate with a leg left to run is a live parlay, and says so at the top.
      Once every leg is settled there is nothing live about it. */
@@ -1143,7 +1157,6 @@ function buildSlateCard(data, entry, siteUrl) {
   });
 
   /* ---- footer ---- */
-  const stake = Number(data.stake) > 0 ? Number(data.stake) : 5;
   ctx.textAlign = "left";
   ctx.fillStyle = C.dim;
   ctx.font = cardFont(500, 24);
@@ -1152,10 +1165,8 @@ function buildSlateCard(data, entry, siteUrl) {
   ctx.textAlign = "right";
   ctx.font = cardFont(700, 26);
   ctx.fillStyle = C.muted;
-  const back = oddsReturn(entry.odds, stake);
-  ctx.fillText(back
-    ? fmtOdds(entry.odds) + " on " + fmtMoney(stake) + " returns " + fmtMoney(back)
-    : fmtMoney(stake) + " parlay", W - pad, footY);
+  // the header already carries the price when there is one
+  if (!oddsLine) ctx.fillText(fmtMoney(stake) + " parlay", W - pad, footY);
 
   return cv;
 }
