@@ -1078,15 +1078,17 @@ function buildSlateCard(data, entry, siteUrl) {
   ctx.font = cardFont(500, 34);
   ctx.fillText(entry.label || "", pad, pad + 92);
 
+  /* A slate with a leg left to run is a live parlay, and says so at the top.
+     Once every leg is settled there is nothing live about it. */
   ctx.textAlign = "right";
-  ctx.fillStyle = C.dim;
-  ctx.font = cardFont(600, 22);
-  ctx.fillText(pend && (w + l) ? "IN PLAY" : "THE SLATE", W - pad, pad + 26);
+  ctx.fillStyle = pend ? C.gold : C.dim;
+  ctx.font = cardFont(800, pend ? 26 : 22);
+  ctx.fillText(pend ? "LIVE PARLAY" : "FINAL", W - pad, pad + 26);
   // before kickoff there is nothing to report but the number of legs
   if (w + l === 0) {
-    ctx.fillStyle = C.gold;
+    ctx.fillStyle = C.text;
     ctx.font = cardFont(700, 40);
-    ctx.fillText(rows.length + " LEGS", W - pad, pad + 74);
+    ctx.fillText(rows.length + " LEGS", W - pad, pad + 78);
   } else {
     ctx.fillStyle = w > l ? C.win : l > w ? C.loss : C.text;
     ctx.font = cardFont(700, 52);
