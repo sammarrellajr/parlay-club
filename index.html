@@ -506,6 +506,10 @@ function streakBadge(n) {
   return `<span class="streak">${n} Straight Wins</span>`;
 }
 
+/* A slate is done when all five legs are settled: then it either cashed or it
+   did not, and the chip says which. */
+function settled(s) { return s.counted === DATA.players.length; }
+
 function renderHistory(key, name) {
   const el = $("hist");
   const list = key === "all" ? DATA.entries.slice() : DATA.entries.filter(e => e.league === key);
@@ -523,7 +527,9 @@ function renderHistory(key, name) {
   const sums = {};
   STATS.summaries.forEach(s => sums[s.id] = s);
 
-  el.innerHTML = list.slice().reverse().map((e, idx) => {
+  /* Every slate ships shut: whatever is still running already has its own card
+     at the top of the page, so nothing needs to be pre-opened down here. */
+  el.innerHTML = list.slice().reverse().map(e => {
     const s = sums[e.id] || { w: 0, l: 0 };
     const body = DATA.players.map(p => {
       const v = e.picks[p] || {};
@@ -535,11 +541,12 @@ function renderHistory(key, name) {
       return `<div class="wl-row"><div class="wl-name">${esc(p)}</div>` +
              `<div class="wl-legs"><div class="wl-leg"><span class="dot ${cls}">${mark}</span>${pick}</div></div></div>`;
     }).join("");
-    return `<div class="wk${idx === 0 ? " open" : ""}">
+    return `<div class="wk">
       <div class="wk-head" onclick="this.parentNode.classList.toggle('open')">
         <span class="wk-t">${esc(e.label)}</span>
-        <span class="wk-m">${s.counted && s.perfect ? '<span class="sweep">PARLAY WIN' +
-          (e.payout ? ": " + fmtMoney(e.payout) : "") + '</span>' : ""}${
+        <span class="wk-m">${settled(s) ? (s.perfect
+          ? '<span class="sweep">PARLAY WIN' + (e.payout ? ": " + fmtMoney(e.payout) : "") + '</span>'
+          : '<span class="sweep miss">PARLAY LOSS</span>') : ""}${
           s.pending ? `<span class="pend-chip">${s.pending} PENDING</span>` : ""}${s.w}-${s.l}<span class="chev">&#9654;</span></span>
       </div>
       <div class="wk-body">${body}
