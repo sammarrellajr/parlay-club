@@ -35,6 +35,7 @@
           "pick": "UNC +8.5"
         }
       },
+      "odds": "",
       "payout": 0,
       "label": "Sat 8/29 College"
     },
@@ -64,6 +65,7 @@
           "pick": "Purdue -34.5"
         }
       },
+      "odds": "",
       "payout": 0,
       "label": "Fri 9/4 College"
     },
@@ -93,6 +95,7 @@
           "pick": "Boise State +24.5"
         }
       },
+      "odds": "",
       "payout": 157.7,
       "label": "Sat 9/5 College"
     },
@@ -101,10 +104,11 @@
       "date": "2026-09-06",
       "league": "nfl",
       "label": "Sun 9/6 NFL · NFL Opening Night",
+      "odds": "",
       "picks": {
         "Drew": {
           "result": "P",
-          "pick": ""
+          "pick": "Stevenson Over 57.5 Rush"
         },
         "Pat": {
           "result": "P",
