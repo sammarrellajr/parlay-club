@@ -110,6 +110,26 @@ details.ebox .esum.blank { color: #414b5c; font-weight: 500; }
 /* the league choice inside the entry, tighter than the page-wide segment */
 .seg.tight { margin: 4px 0 0; }
 
+/* Odds sit with the picks rather than behind the slate fold, because they get
+   typed at the same time as the legs. */
+.oddsrow {
+  display: grid;
+  grid-template-columns: 1fr 132px;
+  align-items: center;
+  gap: 10px;
+  margin-top: 13px;
+  padding: 10px 12px;
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+}
+.oddsrow .fl { margin: 0; }
+.oddsrow input {
+  min-height: 40px; text-align: center;
+  font-size: 15px; font-weight: 700; font-family: var(--mono);
+}
+.oddsrow .hint { grid-column: 1 / -1; margin: 0; }
+
 /* The card heading and its running count share a line. */
 .chead { display: flex; align-items: baseline; gap: 10px; }
 .chead h2 { margin: 0; }
@@ -258,12 +278,7 @@ details.fold.quiet[open] > summary { color: var(--muted); margin-bottom: 4px; }
         <input type="date" id="date">
         <div class="hint" id="dateHint"></div>
 
-        <label class="fl" for="odds" style="margin-top:11px">Parlay odds (optional)</label>
-        <input type="text" id="odds" placeholder="+2750" inputmode="text"
-          autocomplete="off" autocapitalize="none" spellcheck="false">
-        <div class="hint" id="oddsHint">American odds off the slip.</div>
-
-        <label class="fl" for="note" style="margin-top:11px">Name it (optional)</label>
+        <label class="fl" for="note">Name it (optional)</label>
         <input type="text" id="note" placeholder="Bonus, Thursday nighter, second slip"
           autocomplete="off" spellcheck="false">
         <div class="hint">For an extra parlay on top of the usual slate.</div>
@@ -280,7 +295,14 @@ details.fold.quiet[open] > summary { color: var(--muted); margin-bottom: 4px; }
         <div class="hint" id="pasteHint">Labels, odds and venue lines get ignored.</div>
       </details>
 
-      <div id="entries" style="margin-top:14px"></div>
+      <div class="oddsrow">
+        <label class="fl" for="odds">Parlay odds</label>
+        <input type="text" id="odds" placeholder="+1157" inputmode="text"
+          autocomplete="off" autocapitalize="none" spellcheck="false">
+        <div class="hint" id="oddsHint">Off the slip. Optional.</div>
+      </div>
+
+      <div id="entries" style="margin-top:12px"></div>
 
       <div id="payoutRow" style="display:none;margin-top:13px">
         <label class="fl" for="payout">Parlay payout</label>
@@ -553,9 +575,8 @@ function updateDateHint() {
     : base;
 
   /* Shut, the fold still has to say what this slate is. */
-  const odds = fmtOdds($("odds").value);
   $("setupSum").textContent = date
-    ? entryLabel(date, LG) + suffixFor(date, LG) + (odds ? " · " + odds : "")
+    ? entryLabel(date, LG) + suffixFor(date, LG)
     : "pick a date";
 }
 
@@ -764,15 +785,15 @@ function syncPayoutRow() {
     : "All five hit. What did the " + fmtMoney(stake) + " parlay pay?";
 
   $("oddsHint").textContent = back
-    ? "American odds off the slip. $" + stake + " comes back " + fmtMoney(back) + "."
-    : "American odds off the slip.";
+    ? fmtMoney(stake) + " comes back " + fmtMoney(back) + "."
+    : "Off the slip. Optional.";
 
   const marked = boxes.filter(b => b.querySelector(".on-w, .on-l, .on-p")).length;
   $("entriesCount").textContent = boxes.length
     ? marked + " of " + boxes.length + " marked" : "";
 }
 
-$("odds").addEventListener("input", () => { syncPayoutRow(); updateDateHint(); });
+$("odds").addEventListener("input", syncPayoutRow);
 
 /* Type-ahead under a field: prior picks first, then team names. Team boxes ask
    for teams only, and drop the name in without a trailing space. */
