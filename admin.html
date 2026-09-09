@@ -66,6 +66,49 @@ details.card.fold:not([open]) { padding-bottom: 6px; }
 }
 .lrow.editing { background: #16241c; border-radius: 10px; padding-left: 9px; padding-right: 9px; }
 
+/* A slate still running, with the one button that matters. */
+.ipbar {
+  display: flex; align-items: center; gap: 11px;
+  border: 1px solid #6b5312;
+  background: linear-gradient(180deg, #241d08 0%, var(--panel-2) 70%);
+  border-radius: 14px;
+  padding: 11px 12px;
+  margin-bottom: 10px;
+}
+.ipbar.editing { border-color: var(--gold); }
+.ipbar-l { flex: 1; min-width: 0; }
+.ipbar-t { font-size: 14.5px; font-weight: 700; display: flex; align-items: center; gap: 8px; }
+.ipbar-m { font-size: 12px; color: var(--gold-soft); margin-top: 2px; font-weight: 620; }
+.ip-tag {
+  font-size: 9.5px; font-weight: 850; letter-spacing: 0.9px;
+  color: #241a02; background: var(--gold);
+  border-radius: 5px; padding: 3px 6px; flex: none;
+}
+
+/* One collapsible row per person, so five picks fit on a screen. */
+details.ebox > summary {
+  list-style: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-height: 34px;
+  user-select: none;
+  -webkit-user-select: none;
+}
+details.ebox > summary::-webkit-details-marker { display: none; }
+details.ebox[open] > summary { margin-bottom: 11px; }
+details.ebox .ename { font-size: 15px; font-weight: 720; flex: none; margin-bottom: 0; }
+details.ebox .esum {
+  flex: 1; min-width: 0; text-align: right;
+  font-size: 12.5px; font-weight: 620; color: var(--muted);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+details.ebox .esum.blank { color: #414b5c; font-weight: 500; }
+
+/* the league choice inside the entry, tighter than the page-wide segment */
+.seg.tight { margin: 4px 0 0; }
+
 /* The card heading and its running count share a line. */
 .chead { display: flex; align-items: baseline; gap: 10px; }
 .chead h2 { margin: 0; }
@@ -146,10 +189,6 @@ details.card.fold:not([open]) { padding-bottom: 6px; }
         <a class="icon-btn" href="index.html">Done</a>
       </div>
     </div>
-    <div class="seg" id="lgSeg" style="display:none">
-      <button data-lg="cfb" class="on">College</button>
-      <button data-lg="nfl">NFL</button>
-    </div>
     <div id="topPad" style="height:11px"></div>
   </div>
 
@@ -176,22 +215,31 @@ details.card.fold:not([open]) { padding-bottom: 6px; }
   <!-- EDITOR -->
   <div id="app" style="display:none">
 
-    <div class="card" id="queue" style="display:none">
-      <h2>Needs results</h2>
-      <p class="cs">Logged ahead of time. Tap to settle.</p>
-      <div id="queueList"></div>
-    </div>
+    <div id="inplayBar"></div>
 
-    <div class="card">
+    <button class="btn primary wide" id="newEntry">New entry</button>
+
+    <div class="card" id="editor" style="display:none;margin-top:12px">
       <div class="chead">
         <h2 id="editorTitle">New entry</h2>
         <span class="fcount" id="entriesCount"></span>
       </div>
-      <p class="cs" id="editorSub">Pick the date, then tap W, L or Pending for each guy.</p>
+      <p class="cs" id="editorSub">Pick the league and date, then add each guy's pick.</p>
 
-      <label class="fl" for="date">Date</label>
+      <label class="fl">League</label>
+      <div class="seg tight" id="lgSeg">
+        <button data-lg="cfb" class="on">College</button>
+        <button data-lg="nfl">NFL</button>
+      </div>
+
+      <label class="fl" for="date" style="margin-top:11px">Date</label>
       <input type="date" id="date">
       <div class="hint" id="dateHint"></div>
+
+      <label class="fl" for="odds" style="margin-top:11px">Parlay odds (optional)</label>
+      <input type="text" id="odds" placeholder="+2750" inputmode="text"
+        autocomplete="off" autocapitalize="none" spellcheck="false">
+      <div class="hint" id="oddsHint">American odds off the slip.</div>
 
       <label class="fl" for="note" style="margin-top:11px">Name it (optional)</label>
       <input type="text" id="note" placeholder="Bonus, Thursday nighter, second slip"
@@ -215,17 +263,11 @@ details.card.fold:not([open]) { padding-bottom: 6px; }
         <label class="fl" for="payout">Parlay payout</label>
         <input type="text" id="payout" inputmode="decimal" placeholder="0.00"
           autocomplete="off" spellcheck="false">
-        <div class="hint">All five hit. What did the $<span id="stakeLbl">5</span> parlay pay?</div>
+        <div class="hint" id="payoutHint">All five hit. What did the parlay pay?</div>
       </div>
 
       <button class="btn wide" id="allPending" style="margin-top:12px">Mark all pending</button>
     </div>
-
-    <details class="card fold" id="histCard" style="margin-top:14px">
-      <summary>History<span class="fcount" id="histCount"></span></summary>
-      <p class="cs" style="margin-top:10px">Edit loads it back up top, payout included.</p>
-      <div id="entryList"></div>
-    </details>
 
     <details class="card fold" id="shareCard" style="margin-top:14px">
       <summary>Share update</summary>
@@ -260,13 +302,15 @@ details.card.fold:not([open]) { padding-bottom: 6px; }
       <div class="hint" id="tokOut">Signed in to <span id="whoRepo"></span>.</div>
     </details>
 
-    <div class="savebar">
+    <a class="btn wide" id="histBtn" href="history.html" style="margin-top:14px">History</a>
+
+    <div class="savebar" id="savebar" style="display:none">
       <div id="saveMsg" style="display:none;font-size:13px;font-weight:650;line-height:1.35;
         padding:9px 11px;border-radius:10px;margin-bottom:9px"></div>
       <button class="btn primary wide" id="save">Save entry</button>
       <div class="actions" id="secondary" style="margin-top:9px;display:none">
         <div class="two">
-          <button class="btn" id="cancelEdit">Cancel</button>
+          <button class="btn" id="cancelEdit">Done</button>
           <button class="btn danger" id="deleteBtn">Delete entry</button>
         </div>
       </div>
@@ -431,13 +475,14 @@ async function connect(silent) {
   localStorage.setItem("pc_token", STATE.token);
   $("setup").style.display = "none";
   $("app").style.display = "block";
-  $("lgSeg").style.display = "grid";
   $("topPad").style.display = "none";
   $("whoRepo").textContent = STATE.owner + "/" + STATE.repo + " on " + STATE.branch;
-  defaultLeagueAndDate();
-  buildForm();
   renderList();
   say("");
+
+  // history.html links back here with the slate to fix
+  const want = new URLSearchParams(location.search).get("edit");
+  if (want && DATA.entries.some(e => e.id === want)) editEntry(want);
 
   const write = await canWrite();
   if (write === false) {
@@ -487,16 +532,15 @@ function updateDateHint() {
     ? base + ". That date already has " + dupes.length + " logged."
     : base;
   $("editorSub").textContent = EDITING
-    ? "Editing an existing entry."
-    : "Pick the date, then tap W, L or Pending for each guy.";
+    ? "Save as often as you like. This stays open until you hit Done."
+    : "Pick the league and date, then add each guy's pick.";
 }
 
 $("lgSeg").addEventListener("click", e => {
   const b = e.target.closest("button");
-  if (!b || EDITING) return;
+  if (!b || EDITING) return;      // the league is locked once a slate exists
   setLeague(b.dataset.lg, true);
   buildForm();
-  renderList();
 });
 
 $("date").addEventListener("change", () => { dateTouched = true; updateDateHint(); });
@@ -510,8 +554,12 @@ function buildForm(entry) {
     const b = parsePick(v.pick);
     const ou = b && b.mode === "ou" ? b : null;
     const sp = b && b.mode === "sp" ? b : null;
-    return `<div class="ebox" data-player="${esc(p)}">
-      <div class="ename">${esc(p)}</div>
+    return `<details class="ebox" data-player="${esc(p)}">
+      <summary>
+        <span class="dot none" data-dot>-</span>
+        <span class="ename">${esc(p)}</span>
+        <span class="esum" data-sum>no pick yet</span>
+      </summary>
       <div class="leg">
         <div class="legL">
           <div class="pick-in">
@@ -575,7 +623,7 @@ function buildForm(entry) {
           <button type="button" data-v="P" class="pend ${v.result === "P" ? "on-p" : ""}">PENDING</button>
         </span>
       </div>
-    </div>`;
+    </details>`;
   }).join("");
 
   $("entries").querySelectorAll(".wl button").forEach(btn => {
@@ -585,9 +633,19 @@ function buildForm(entry) {
       const already = btn.classList.contains("on-w") || btn.classList.contains("on-l") || btn.classList.contains("on-p");
       group.querySelectorAll("button").forEach(b => b.classList.remove("on-w", "on-l", "on-p"));
       if (!already) btn.classList.add(val === "W" ? "on-w" : val === "L" ? "on-l" : "on-p");
+      syncRow(btn.closest(".ebox"));
       syncPayoutRow();
     });
   });
+
+  $("entries").querySelectorAll(".ebox").forEach(row => {
+    row.querySelector(".pick").addEventListener("input", () => syncRow(row));
+    syncRow(row);
+  });
+
+  // a fresh slate opens on the first name, so the first pick goes straight in
+  const first = $("entries").querySelector(".ebox");
+  if (first && !entry) first.open = true;
 
   $("entries").querySelectorAll(".pick").forEach(i => wireSuggest(i));
   $("entries").querySelectorAll(".ebox").forEach(wireBuilder);
@@ -641,6 +699,7 @@ function wireBuilder(row) {
       const sg = part.querySelector('.tog[data-t="sg"] button.on').dataset.val;
       pick.value = num ? team + " " + sg + num : team;
     }
+    syncRow(row);
   };
 
   row.querySelectorAll(".bpart input").forEach(i => i.addEventListener("input", compose));
@@ -652,18 +711,49 @@ function wireBuilder(row) {
   row.querySelectorAll(".tm").forEach(i => wireSuggest(i, { teamsOnly: true, after: compose }));
 }
 
+/* A collapsed row still has to say who has a pick and how it went. */
+function syncRow(row) {
+  const on = row.querySelector(".on-w, .on-l, .on-p");
+  const res = on ? on.dataset.v : null;
+  const pick = row.querySelector(".pick").value.trim();
+  const dot = row.querySelector("[data-dot]");
+  dot.className = "dot " + (res === "W" ? "w" : res === "L" ? "l" : res === "P" ? "p" : "none");
+  dot.textContent = res === "P" ? "P" : (res || "-");
+  const sum = row.querySelector("[data-sum]");
+  sum.textContent = pick || "no pick yet";
+  sum.classList.toggle("blank", !pick);
+}
+
 /* The payout only means anything when every leg won, so it only shows then. */
 function syncPayoutRow() {
   const boxes = [...$("entries").querySelectorAll(".ebox")];
+  const stake = (DATA && DATA.stake) || 5;
   const swept = boxes.length > 0 && boxes.every(b => b.querySelector(".on-w"));
   $("payoutRow").style.display = swept ? "block" : "none";
-  $("stakeLbl").textContent = (DATA && DATA.stake) || 5;
-  if (!swept) $("payout").value = "";
+
+  /* Odds on the slip already say what a sweep pays, so fill it in rather than
+     making him work it out. He can still type over it. */
+  const back = oddsReturn($("odds").value, stake);
+  if (!swept) {
+    $("payout").value = "";
+  } else if (back && !$("payout").value.trim()) {
+    $("payout").value = String(back);
+  }
+  $("payoutHint").textContent = back
+    ? "All five hit. " + fmtOdds($("odds").value) + " on " + fmtMoney(stake) + " comes back " +
+      fmtMoney(back) + ". Change it if the book paid something else."
+    : "All five hit. What did the " + fmtMoney(stake) + " parlay pay?";
+
+  $("oddsHint").textContent = back
+    ? "American odds off the slip. $" + stake + " comes back " + fmtMoney(back) + "."
+    : "American odds off the slip.";
 
   const marked = boxes.filter(b => b.querySelector(".on-w, .on-l, .on-p")).length;
   $("entriesCount").textContent = boxes.length
     ? marked + " of " + boxes.length + " marked" : "";
 }
+
+$("odds").addEventListener("input", syncPayoutRow);
 
 /* Type-ahead under a field: prior picks first, then team names. Team boxes ask
    for teams only, and drop the name in without a trailing space. */
@@ -748,6 +838,7 @@ function setAllPending() {
     const wl = row.querySelector(".wl");
     wl.querySelectorAll("button").forEach(b => b.classList.remove("on-w", "on-l", "on-p"));
     wl.querySelector('[data-v="P"]').classList.add("on-p");
+    syncRow(row);
   });
   syncPayoutRow();
 }
@@ -787,7 +878,7 @@ $("save").addEventListener("click", async () => {
     if (!ok) { say("info", "Nothing saved."); return; }
   }
 
-  const label0 = $("save").textContent;
+  let nextLabel = $("save").textContent;   // put back at the end, saved or not
   $("save").disabled = true;
   $("save").textContent = "Saving...";
   say("info", "Saving...");
@@ -795,20 +886,28 @@ $("save").addEventListener("click", async () => {
     DATA = await fetchFile(); // refresh so we never clobber a newer save
     const id = EDITING || nextIdFor(date, LG);
     const note = $("note").value.trim();
+    const odds = $("odds").value.trim();
     const label = entryLabel(date, LG) + suffixFor(date, LG) + (note ? " · " + note : "");
-    const entry = { id, date, league: LG, label, picks, payout };
+    const entry = { id, date, league: LG, label, odds, picks, payout };
     const i = DATA.entries.findIndex(e => e.id === id);
     if (i >= 0) DATA.entries[i] = entry; else DATA.entries.push(entry);
     DATA.entries.sort((a, b) => a.date.localeCompare(b.date) || a.id.localeCompare(b.id));
     await commitFile(DATA, (i >= 0 ? "Update " : "Add ") + label);
-    say("ok", (i >= 0 ? "Updated " : "Saved ") + label + ". It is live on the main page.");
-    resetForm();
+
+    /* The slate stays open so the next pick to land can go straight in. Hit
+       Done when the five are all logged. */
+    EDITING = id;
+    $("editorTitle").textContent = "Editing " + label;
+    syncSecondary();
+    nextLabel = "Update entry";
+    updateDateHint();
+    say("ok", (i >= 0 ? "Updated " : "Saved ") + label + ". Still open, add the next one.");
     renderList();
   } catch (e) {
     say("err", "NOT SAVED. " + e.message);
   } finally {
     $("save").disabled = false;
-    $("save").textContent = label0;
+    $("save").textContent = nextLabel;
   }
 });
 
@@ -816,9 +915,10 @@ function resetForm() {
   EDITING = null;
   dateTouched = false;
   $("editorTitle").textContent = "New entry";
-  $("secondary").style.display = "none";
+  syncSecondary();
   $("save").textContent = "Save entry";
   $("note").value = "";
+  $("odds").value = "";
   defaultLeagueAndDate();
   buildForm();
   $("pasteBox").value = "";
@@ -902,11 +1002,12 @@ function applyAssign() {
     const p = ASSIGNED[i];
     if (!p) return;
     const box = boxes.find(b => b.dataset.player === p);
-    if (box) box.querySelector(".pick").value = t;
+    if (box) { box.querySelector(".pick").value = t; box.open = true; }
   });
+  boxes.forEach(syncRow);
 }
 
-$("cancelEdit").addEventListener("click", () => { resetForm(); renderList(); say(""); window.scrollTo({ top: 0 }); });
+$("cancelEdit").addEventListener("click", () => { resetForm(); closeEditor(); renderList(); window.scrollTo({ top: 0 }); });
 
 $("deleteBtn").addEventListener("click", () => { if (EDITING) deleteEntry(EDITING); });
 
@@ -921,63 +1022,23 @@ $("clearPaste").addEventListener("click", () => {
 
 /* Everything on screen that depends on the file, redrawn together. */
 function renderList() {
-  renderQueue();
-  renderEntries();
+  renderInPlayBar();
   renderShare();
 }
 
-/* Every entry, newest first, split by league so either one can be corrected
-   without touching the league toggle. */
-function renderEntries() {
-  const el = $("entryList");
-  el.innerHTML = LEAGUES.map(lg => {
-    const list = DATA.entries.filter(e => e.league === lg.key).reverse();
-    const body = list.length
-      ? list.map(e => {
-          let w = 0, l = 0, p = 0;
-          DATA.players.forEach(n => {
-            const r = (e.picks[n] || {}).result;
-            if (r === "W") w++; else if (r === "L") l++; else if (r === "P") p++;
-          });
-          const swept = isParlay(DATA, e);
-          const money = e.payout ? fmtMoney(e.payout)
-            : swept ? "payout not entered" : "";
-          return `<div class="lrow${EDITING === e.id ? " editing" : ""}">
-            <div>
-              <div class="lt">${swept ? '<span class="parlay-tag">PARLAY</span>' : ""}${esc(e.label)}</div>
-              <div class="lm">${w}-${l}${p ? " &middot; " + p + " pending" : ""}${
-                money ? " &middot; " + esc(money) : ""}</div>
-            </div>
-            <button class="btn sm" data-edit="${esc(e.id)}">Edit</button>
-          </div>`;
-        }).join("")
-      : '<div class="hint">Nothing logged yet.</div>';
-    return `<div class="lgroup"><h3>${esc(lg.full)}</h3>${body}</div>`;
-  }).join("");
+/* Anything still running sits at the top with one button: Settle. This is the
+   only place a half-finished slate surfaces, so nothing gets forgotten. */
+function renderInPlayBar() {
+  const el = $("inplayBar");
+  const live = inPlayEntries(DATA);
+  if (!live.length) { el.innerHTML = ""; return; }
 
-  el.querySelectorAll("[data-edit]").forEach(b =>
-    b.addEventListener("click", () => editEntry(b.dataset.edit)));
-
-  const n = DATA.entries.length;
-  $("histCount").textContent = n ? n + (n === 1 ? " slate" : " slates") : "";
-}
-
-/* Anything still carrying a pending pick, across both leagues. */
-function renderQueue() {
-  const card = $("queue");
-  const el = $("queueList");
-  const list = DATA.entries.filter(e =>
-    DATA.players.some(p => (e.picks[p] || {}).result === "P"));
-
-  if (!list.length) { card.style.display = "none"; return; }
-  card.style.display = "block";
-
-  el.innerHTML = list.slice().reverse().map(e => {
-    const n = DATA.players.filter(p => (e.picks[p] || {}).result === "P").length;
-    return `<div class="lrow">
-      <div>
-        <div class="lt">${esc(e.label)}</div>
-        <div class="lm">${n} still pending</div>
+  el.innerHTML = live.map(e => {
+    const t = tally(DATA, e);
+    return `<div class="ipbar${EDITING === e.id ? " editing" : ""}">
+      <div class="ipbar-l">
+        <div class="ipbar-t"><span class="ip-tag">IN PLAY</span>${esc(e.label)}</div>
+        <div class="ipbar-m">${t.w}-${t.l} &middot; ${t.p}${t.p === 1 ? " leg" : " legs"} to play</div>
       </div>
       <button class="btn sm" data-settle="${esc(e.id)}">Settle</button>
     </div>`;
@@ -992,19 +1053,51 @@ function editEntry(id) {
   if (!e) return;
   EDITING = id;
   dateTouched = true;
+  openEditor();
   setLeague(e.league, false);
   $("date").value = e.date || "";
+  $("odds").value = e.odds || "";
   // the label carries any name after a middle dot, so editing keeps it
   $("note").value = String(e.label || "").split(" · ").slice(1).join(" · ");
   $("editorTitle").textContent = "Editing " + e.label;
-  $("secondary").style.display = "grid";
+  syncSecondary();
   $("save").textContent = "Update entry";
   buildForm(e);
   updateDateHint();
-  renderEntries();               // highlight the row being worked on
+  renderInPlayBar();             // highlight the slate being worked on
   window.scrollTo({ top: 0, behavior: "smooth" });
   say("info", "Editing " + e.label + ". The league is locked while editing.");
 }
+
+/* The editor stays out of the way until there is something to work on. */
+function openEditor() {
+  $("editor").style.display = "block";
+  $("savebar").style.display = "block";
+  $("newEntry").style.display = "none";
+  syncSecondary();
+}
+
+/* Done is there the whole time the editor is open, so a new entry can be
+   backed out of. Delete only makes sense once the slate exists. */
+function syncSecondary() {
+  const solo = !EDITING;
+  $("secondary").style.display = "grid";
+  $("deleteBtn").style.display = solo ? "none" : "block";
+  $("secondary").querySelector(".two").style.gridTemplateColumns = solo ? "1fr" : "1fr 1fr";
+}
+
+function closeEditor() {
+  $("editor").style.display = "none";
+  $("savebar").style.display = "none";
+  $("newEntry").style.display = "block";
+  say("");
+}
+
+$("newEntry").addEventListener("click", () => {
+  resetForm();
+  openEditor();
+  window.scrollTo({ top: 0, behavior: "smooth" });
+});
 
 async function deleteEntry(id) {
   const e = DATA.entries.find(x => x.id === id);
@@ -1015,7 +1108,7 @@ async function deleteEntry(id) {
     DATA = await fetchFile();
     DATA.entries = DATA.entries.filter(x => x.id !== id);
     await commitFile(DATA, "Delete " + e.label);
-    if (EDITING === id) resetForm();
+    if (EDITING === id) { resetForm(); closeEditor(); }
     say("ok", "Deleted " + e.label + ".");
     renderList();
   } catch (err) {
