@@ -1,0 +1,200 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Parlay Club">
+<meta name="theme-color" content="#0a0d12">
+<link rel="apple-touch-icon" href="1A11D967-A164-4882-93CB-DDBCDE1E5593.png">
+<link rel="icon" href="1A11D967-A164-4882-93CB-DDBCDE1E5593.png">
+<title>Parlay Club History</title>
+<link rel="stylesheet" href="styles.css">
+<style>
+.seg { grid-template-columns: 1fr 1fr 1fr; }
+
+/* One card per slate, with its own buttons. */
+.hrow {
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 13px 14px;
+  margin-bottom: 10px;
+}
+.hrow.live { border-color: #6b5312; background: linear-gradient(180deg, #241d08 0%, var(--panel-2) 70%); }
+.hrow.hit { border-color: #2f5c42; }
+
+.htop { display: flex; align-items: baseline; gap: 9px; }
+.hlab { font-size: 15.5px; font-weight: 720; flex: 1; min-width: 0; }
+.hrec { font-size: 15px; font-weight: 800; font-variant-numeric: tabular-nums; }
+.hrec.up { color: var(--accent); }
+.hrec.down { color: var(--loss); }
+
+.hmeta { font-size: 12px; color: var(--dim); margin-top: 3px; }
+.hmeta .live-tag { color: var(--gold); font-weight: 750; }
+.hmeta .hit-tag { color: var(--accent); font-weight: 750; }
+
+.hpicks { margin-top: 10px; display: grid; gap: 5px; }
+.hpick { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.hpick .pnm2 { width: 58px; flex: none; font-size: 12.5px; font-weight: 650; color: var(--muted); }
+.hpick .ppk { font-size: 12.5px; color: var(--muted); overflow: hidden;
+  text-overflow: ellipsis; white-space: nowrap; }
+.hpick .ppk.blank { color: #414b5c; }
+
+.hacts { display: grid; grid-template-columns: 1fr 1fr; gap: 9px; margin-top: 12px; }
+
+.empty2 { color: var(--dim); font-size: 14px; text-align: center; padding: 30px 10px; }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <div class="top">
+    <div class="bar">
+      <div>
+        <h1 class="title">History</h1>
+        <div class="sub-season" id="hSub"></div>
+      </div>
+      <div class="bar-actions">
+        <a class="icon-btn" href="index.html">Done</a>
+      </div>
+    </div>
+    <div class="seg" id="hSeg">
+      <button data-lg="all" class="on">All</button>
+      <button data-lg="cfb">College</button>
+      <button data-lg="nfl">NFL</button>
+    </div>
+  </div>
+
+  <div class="msg err" id="err"></div>
+  <div class="msg info" id="info"></div>
+
+  <div id="hList"></div>
+
+</div>
+
+<script src="app.js"></script>
+<script>
+let DATA = null;
+let LG = "all";
+
+const $ = id => document.getElementById(id);
+
+function say(kind, text) {
+  ["err", "info"].forEach(k => $(k).classList.remove("show"));
+  if (!text) return;
+  $(kind).textContent = text;
+  $(kind).classList.add("show");
+}
+
+function siteUrl() {
+  return location.href.replace(/[^/]*$/, "").replace(/\/$/, "") + "/";
+}
+
+async function boot() {
+  try {
+    DATA = await loadResults();
+  } catch (e) {
+    say("err", "Could not load the results: " + e.message);
+    return;
+  }
+  const live = inPlayEntries(DATA).length;
+  $("hSub").textContent = live
+    ? live + (live === 1 ? " slate in play" : " slates in play")
+    : DATA.entries.length + (DATA.entries.length === 1 ? " slate" : " slates");
+  render();
+}
+
+$("hSeg").addEventListener("click", e => {
+  const b = e.target.closest("button");
+  if (!b) return;
+  LG = b.dataset.lg;
+  [...$("hSeg").children].forEach(c => c.classList.toggle("on", c === b));
+  render();
+});
+
+function render() {
+  const el = $("hList");
+  const list = (LG === "all" ? DATA.entries : DATA.entries.filter(e => e.league === LG))
+    .slice().reverse();
+
+  if (!list.length) {
+    el.innerHTML = '<div class="empty2">Nothing logged here yet.</div>';
+    return;
+  }
+
+  el.innerHTML = list.map(e => {
+    const t = tally(DATA, e);
+    const live = t.p > 0;
+    const hit = isParlay(DATA, e);
+    const back = oddsReturn(e.odds, DATA.stake);
+
+    const meta = [
+      live ? '<span class="live-tag">IN PLAY</span>' : "",
+      hit ? '<span class="hit-tag">PARLAY WIN</span>' : "",
+      live ? t.p + (t.p === 1 ? " leg" : " legs") + " to play" : "",
+      e.payout ? fmtMoney(e.payout) + " back" : (back ? fmtOdds(e.odds) + " · pays " + fmtMoney(back) : ""),
+      hit && !e.payout ? "payout not entered" : ""
+    ].filter(Boolean).join(" &middot; ");
+
+    const picks = DATA.players.map(p => {
+      const v = e.picks[p] || {};
+      const cls = v.result === "W" ? "w" : v.result === "L" ? "l" : v.result === "P" ? "p" : "none";
+      const mark = v.result === "P" ? "P" : (v.result || "-");
+      return `<div class="hpick"><span class="dot ${cls}">${mark}</span>` +
+             `<span class="pnm2">${esc(p)}</span>` +
+             `<span class="ppk${v.pick ? "" : " blank"}">${esc(v.pick || "no pick logged")}</span></div>`;
+    }).join("");
+
+    return `<div class="hrow${live ? " live" : hit ? " hit" : ""}">
+      <div class="htop">
+        <div class="hlab">${esc(e.label)}</div>
+        <div class="hrec ${t.w > t.l ? "up" : t.l > t.w ? "down" : ""}">${t.w}-${t.l}</div>
+      </div>
+      ${meta ? `<div class="hmeta">${meta}</div>` : ""}
+      <div class="hpicks">${picks}</div>
+      <div class="hacts">
+        <a class="btn sm" href="admin.html?edit=${encodeURIComponent(e.id)}">Edit</a>
+        <button class="btn sm" data-share="${esc(e.id)}">Share</button>
+      </div>
+    </div>`;
+  }).join("");
+
+  el.querySelectorAll("[data-share]").forEach(b =>
+    b.addEventListener("click", () => shareSlate(b.dataset.share)));
+}
+
+async function shareSlate(id) {
+  const e = DATA.entries.find(x => x.id === id);
+  if (!e) return;
+  const url = siteUrl();
+  const cv = buildSlateCard(DATA, e, url);
+  const blob = await new Promise(res => cv.toBlob(res, "image/png"));
+  const file = new File([blob], "parlay-club-slate-" + e.id + ".png", { type: "image/png" });
+  const text = "Parlay Club - " + e.label + "\n" + url;
+  try {
+    if (navigator.canShare && navigator.canShare({ files: [file] })) {
+      await navigator.share({ files: [file], text });
+    } else if (navigator.share) {
+      await navigator.share({ text, url });
+      say("info", "Shared the link. This browser will not attach images.");
+    } else {
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = file.name;
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+      say("info", "Saved the image. This browser has no share sheet.");
+    }
+  } catch (err) {
+    if (err && err.name === "AbortError") return;
+    say("err", "Share failed: " + err.message);
+  }
+}
+
+boot();
+</script>
+</body>
+</html>
