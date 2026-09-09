@@ -262,7 +262,6 @@ button { touch-action: manipulation; }
   align-items: center;
   gap: 5px;
 }
-.pnm .crown { color: var(--gold); font-size: 12px; }
 
 .psub {
   display: flex;
