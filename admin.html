@@ -1195,7 +1195,7 @@ $("shareBtn").addEventListener("click", async () => {
   if (!wk) { say("err", "Nothing logged to share yet."); return; }
 
   const url = siteUrl();
-  const text = "Parlay Club - " + wk.label + "\n" + url;
+  const text = url;                        // the image says the rest
   let blob;
   try {
     blob = await cardBlob(buildShareCard(DATA, wk, url));
@@ -1257,8 +1257,7 @@ $("slateBtn").addEventListener("click", async () => {
   if (!e) { say("err", "Nothing logged to share yet."); return; }
   const url = siteUrl();
   await shareCanvas(buildSlateCard(DATA, e, url),
-    "parlay-club-slate-" + e.id + ".png",
-    "Parlay Club - " + e.label + "\n" + url, url);
+    "parlay-club-slate-" + e.id + ".png", url, url);
 });
 
 $("slatePrev").addEventListener("click", () => {
