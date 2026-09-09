@@ -71,7 +71,6 @@
       "id": "2026-09-05-cfb",
       "date": "2026-09-05",
       "league": "cfb",
-      "label": "Sat 9/5 College",
       "picks": {
         "Drew": {
           "result": "W",
@@ -94,7 +93,37 @@
           "pick": "Boise State +24.5"
         }
       },
-      "payout": 157.7
+      "payout": 157.7,
+      "label": "Sat 9/5 College"
+    },
+    {
+      "id": "2026-09-06-nfl",
+      "date": "2026-09-06",
+      "league": "nfl",
+      "label": "Sun 9/6 NFL · NFL Opening Night",
+      "picks": {
+        "Drew": {
+          "result": "P",
+          "pick": ""
+        },
+        "Pat": {
+          "result": "P",
+          "pick": ""
+        },
+        "Sam": {
+          "result": "P",
+          "pick": "Patriots/Seahawks Over 44.5"
+        },
+        "Tim": {
+          "result": "P",
+          "pick": "Kupp Over 29.5 Rec"
+        },
+        "Tyler": {
+          "result": "P",
+          "pick": "Henry Over 34.5 Rec"
+        }
+      },
+      "payout": 0
     }
   ]
 }
