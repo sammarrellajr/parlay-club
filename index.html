@@ -87,6 +87,36 @@
 }
 .admin-link:active { color: var(--muted); }
 
+/* A slate still running leads the page: the tag, the running count, and the
+   five legs themselves, so opening the app tells you what is riding. */
+.ip {
+  border: 1px solid #6b5312;
+  background: linear-gradient(180deg, #241d08 0%, var(--panel-2) 70%);
+  border-radius: 15px;
+  padding: 13px 14px;
+  margin-bottom: 12px;
+}
+.ip-top { display: flex; align-items: center; gap: 9px; }
+.ip-tag {
+  font-size: 10px; font-weight: 850; letter-spacing: 0.9px;
+  color: #241a02; background: var(--gold);
+  border-radius: 5px; padding: 3px 7px; flex: none;
+}
+.ip-lab { font-size: 14px; font-weight: 700; flex: 1; min-width: 0;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ip-rec { font-size: 14px; font-weight: 800; font-variant-numeric: tabular-nums; flex: none; }
+.ip-sub { font-size: 11.5px; color: var(--gold-soft); margin-top: 3px; font-weight: 650; }
+
+.ip-legs { margin-top: 11px; display: grid; gap: 6px; }
+.ip-leg { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.ip-nm { width: 56px; flex: none; font-size: 12.5px; font-weight: 650; }
+.ip-pk { font-size: 12.5px; color: var(--muted); overflow: hidden;
+  text-overflow: ellipsis; white-space: nowrap; }
+.ip-pk.blank { color: #414b5c; }
+.ip-share { width: 100%; margin-top: 12px; }
+
+.wk-share { width: 100%; margin-top: 11px; }
+
 .parlay.mini { padding: 9px 14px; margin-bottom: 12px; }
 .parlay.mini .plab { font-size: 10px; letter-spacing: 0.8px; }
 .parlay.mini .psubl { font-size: 10.5px; margin-top: 2px; }
@@ -119,6 +149,9 @@
   </div>
 
   <div class="msg err" id="err"></div>
+  <div class="msg info" id="info"></div>
+
+  <div id="inplay"></div>
 
   <div class="parlay" id="parlay"></div>
 
@@ -142,6 +175,7 @@
 
   <p class="foot-note" id="foot"></p>
   <a class="admin-link" href="admin.html">Admin</a>
+  <a class="admin-link" href="history.html" style="margin-top:0">History</a>
 </div>
 
 <script src="app.js"></script>
@@ -213,7 +247,72 @@ const TILE_LAB = { all: "Group overall", cfb: "Group college", nfl: "Group NFL" 
 const PARLAY_LAB = { all: "Parlay wins", cfb: "College parlay wins", nfl: "NFL parlay wins" };
 const MONEY_LAB = { all: "Money on the year", cfb: "College money", nfl: "NFL money" };
 
+/* Anything still running goes at the very top, legs and all. */
+function renderInPlay() {
+  const live = inPlayEntries(DATA);
+  const el = $("inplay");
+  if (!live.length) { el.innerHTML = ""; return; }
+
+  el.innerHTML = live.map(e => {
+    const t = tally(DATA, e);
+    const legs = DATA.players.map(p => {
+      const v = e.picks[p] || {};
+      const cls = v.result === "W" ? "w" : v.result === "L" ? "l" : v.result === "P" ? "p" : "none";
+      const mark = v.result === "P" ? "P" : (v.result || "-");
+      return `<div class="ip-leg"><span class="dot ${cls}">${mark}</span>` +
+             `<span class="ip-nm">${esc(p)}</span>` +
+             `<span class="ip-pk${v.pick ? "" : " blank"}">${esc(v.pick || "no pick logged")}</span></div>`;
+    }).join("");
+    const back = oddsReturn(e.odds, DATA.stake);
+    return `<div class="ip">
+      <div class="ip-top">
+        <span class="ip-tag">IN PLAY</span>
+        <span class="ip-lab">${esc(e.label)}</span>
+        <span class="ip-rec">${t.w}-${t.l}</span>
+      </div>
+      <div class="ip-sub">${t.p}${t.p === 1 ? " leg" : " legs"} still to play${
+        back ? " &middot; " + esc(fmtOdds(e.odds)) + " pays " + fmtMoney(back) : ""}</div>
+      <div class="ip-legs">${legs}</div>
+      <button class="btn sm ip-share" data-slate="${esc(e.id)}">Share these picks</button>
+    </div>`;
+  }).join("");
+
+  el.querySelectorAll("[data-slate]").forEach(b =>
+    b.addEventListener("click", () => shareSlate(b.dataset.slate)));
+}
+
+/* One image of a slate's five legs, for sending round. */
+async function shareSlate(id) {
+  const e = DATA.entries.find(x => x.id === id);
+  if (!e) return;
+  const url = location.href.replace(/[^/]*$/, "").replace(/\/$/, "") + "/";
+  const cv = buildSlateCard(DATA, e, url);
+  const blob = await new Promise(res => cv.toBlob(res, "image/png"));
+  const file = new File([blob], "parlay-club-slate-" + e.id + ".png", { type: "image/png" });
+  const text = "Parlay Club - " + e.label + "\n" + url;
+  const note = t => { $("info").textContent = t; $("info").classList.add("show"); };
+  try {
+    if (navigator.canShare && navigator.canShare({ files: [file] })) {
+      await navigator.share({ files: [file], text });
+    } else if (navigator.share) {
+      await navigator.share({ text, url });
+      note("Shared the link. This browser will not attach images.");
+    } else {
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = file.name;
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+      note("Saved the image. This browser has no share sheet.");
+    }
+  } catch (err) {
+    if (err && err.name === "AbortError") return;
+    note("Share failed: " + err.message);
+  }
+}
+
 function render() {
+  renderInPlay();
   const key = LG;
   const rec = STATS.group[key];
   const gp = STATS.groupPct[key];
@@ -411,9 +510,14 @@ function renderHistory(key, name) {
           (e.payout ? ": " + fmtMoney(e.payout) : "") + '</span>' : ""}${
           s.pending ? `<span class="pend-chip">${s.pending} PENDING</span>` : ""}${s.w}-${s.l}<span class="chev">&#9654;</span></span>
       </div>
-      <div class="wk-body">${body}</div>
+      <div class="wk-body">${body}
+        <button class="btn sm wk-share" data-slate="${esc(e.id)}">Share these picks</button>
+      </div>
     </div>`;
   }).join("");
+
+  el.querySelectorAll("[data-slate]").forEach(b =>
+    b.addEventListener("click", () => shareSlate(b.dataset.slate)));
 }
 
 $("seg").addEventListener("click", e => {
