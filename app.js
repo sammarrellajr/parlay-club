@@ -1057,14 +1057,10 @@ function buildSlateCard(data, entry, siteUrl) {
   /* The odds ride at the top of the card when they were logged. When they
      were not, the line is dropped and the header simply closes up. */
   const stake = Number(data.stake) > 0 ? Number(data.stake) : 5;
-  const oddsTxt = fmtOdds(entry.odds);
-  const back = oddsReturn(entry.odds, stake);
-  const oddsLine = oddsTxt
-    ? oddsTxt + (back ? "   " + fmtMoney(stake) + " returns " + fmtMoney(back) : "")
-    : "";
+  const oddsLine = fmtOdds(entry.odds);
 
   const rowH = r => (r.lines.length > 1 ? 128 : 96);
-  const tableY = pad + (oddsLine ? 196 : 150);
+  const tableY = pad + (oddsLine ? 186 : 150);
   const tableH = rows.reduce((n, r) => n + rowH(r), 0);
   const footY = tableY + tableH + 50;
   const height = footY + 42 + pad;
@@ -1089,7 +1085,7 @@ function buildSlateCard(data, entry, siteUrl) {
   if (oddsLine) {
     ctx.fillStyle = C.gold;
     ctx.font = cardFont(750, 32);
-    ctx.fillText(oddsLine, pad, pad + 148);
+    ctx.fillText(oddsLine, pad, pad + 142);
   }
 
   /* A slate with a leg left to run is a live parlay, and says so at the top.
