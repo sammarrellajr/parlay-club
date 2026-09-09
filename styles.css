@@ -414,6 +414,9 @@ button { touch-action: manipulation; }
   padding: 2px 6px;
 }
 
+/* the same chip in the light red off the share card's ladder */
+.sweep.miss { background: #f3a3a0; color: #2a0603; }
+
 .pend-chip {
   font-size: 10px;
   font-weight: 750;
