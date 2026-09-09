@@ -142,9 +142,52 @@ function cleanEntry(e) {
   return {
     id: e.id || (date + "-" + league),
     date, league, picks,
+    odds: String(e.odds || "").trim(),                     // American, as written on the slip
     payout: Number(e.payout) > 0 ? Number(e.payout) : 0,   // only set on a parlay that cashed
     label: e.label || ""   // filled in by normalize so repeats get numbered
   };
+}
+
+/* ---------- in play ---------- */
+
+/* A slate with a leg still to play is "In Play". One phrase, used everywhere:
+   the bar on the dashboard, the bar in the admin, the share card. */
+function inPlay(data, entry) {
+  return data.players.some(p => (entry.picks[p] || {}).result === "P");
+}
+
+/* Every slate still running, newest first. */
+function inPlayEntries(data) {
+  return data.entries.filter(e => inPlay(data, e)).reverse();
+}
+
+/* Wins, losses and legs still to play on one slate. */
+function tally(data, entry) {
+  const t = { w: 0, l: 0, p: 0, blank: 0 };
+  data.players.forEach(pl => {
+    const r = (entry.picks[pl] || {}).result;
+    if (r === "W") t.w++; else if (r === "L") t.l++; else if (r === "P") t.p++; else t.blank++;
+  });
+  return t;
+}
+
+/* American odds as written: "+2750", or "2750" typed without the sign. */
+function fmtOdds(odds) {
+  const t = String(odds || "").trim();
+  if (!t) return "";
+  return /^\d/.test(t) ? "+" + t : t;
+}
+
+/* What the stake comes back as in total, stake included, which is the number
+   the payout field holds. +2750 on $5 returns $142.50. */
+function oddsReturn(odds, stake) {
+  const s = Number(stake) > 0 ? Number(stake) : 5;
+  const m = String(odds || "").trim().match(/^([+-]?)(\d+(?:\.\d+)?)$/);
+  if (!m) return 0;
+  const n = Number(m[2]);
+  if (!n) return 0;
+  const profit = m[1] === "-" ? s * (100 / n) : s * (n / 100);
+  return Math.round((s + profit) * 100) / 100;
 }
 
 /* "Sat 9/5 College" */
@@ -1014,7 +1057,7 @@ function buildSlateCard(data, entry, siteUrl) {
   ctx.textAlign = "right";
   ctx.fillStyle = C.dim;
   ctx.font = cardFont(600, 22);
-  ctx.fillText("THE SLATE", W - pad, pad + 26);
+  ctx.fillText(pend && (w + l) ? "IN PLAY" : "THE SLATE", W - pad, pad + 26);
   // before kickoff there is nothing to report but the number of legs
   if (w + l === 0) {
     ctx.fillStyle = C.gold;
@@ -1027,7 +1070,7 @@ function buildSlateCard(data, entry, siteUrl) {
     if (pend) {
       ctx.fillStyle = C.gold;
       ctx.font = cardFont(600, 22);
-      ctx.fillText(pend + " still pending", W - pad, pad + 118);
+      ctx.fillText(pend + (pend === 1 ? " leg" : " legs") + " to play", W - pad, pad + 118);
     }
   }
 
@@ -1083,7 +1126,10 @@ function buildSlateCard(data, entry, siteUrl) {
   ctx.textAlign = "right";
   ctx.font = cardFont(700, 26);
   ctx.fillStyle = C.muted;
-  ctx.fillText(fmtMoney(stake) + " parlay", W - pad, footY);
+  const back = oddsReturn(entry.odds, stake);
+  ctx.fillText(back
+    ? fmtOdds(entry.odds) + " on " + fmtMoney(stake) + " returns " + fmtMoney(back)
+    : fmtMoney(stake) + " parlay", W - pad, footY);
 
   return cv;
 }
