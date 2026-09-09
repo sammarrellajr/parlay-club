@@ -685,4 +685,4 @@ textarea:focus { outline: none; border-color: #3f7dd6; box-shadow: 0 0 0 3px rgb
 @media (min-width: 430px) {
   .tile .val { font-size: 28px; }
   .pnm { font-size: 16px; }
-}X
+}
