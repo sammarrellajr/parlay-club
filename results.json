@@ -107,23 +107,23 @@
       "odds": "+2100",
       "picks": {
         "Drew": {
-          "result": "P",
+          "result": "L",
           "pick": "Stevenson Over 57.5 Rush"
         },
         "Pat": {
-          "result": "P",
+          "result": "W",
           "pick": "JSN Anytime TD"
         },
         "Sam": {
-          "result": "P",
+          "result": "L",
           "pick": "Patriots/Seahawks Over 44.5"
         },
         "Tim": {
-          "result": "P",
+          "result": "W",
           "pick": "Kupp Over 29.5 Rec"
         },
         "Tyler": {
-          "result": "P",
+          "result": "L",
           "pick": "Henry Over 34.5 Rec"
         }
       },
