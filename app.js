@@ -1210,6 +1210,198 @@ function buildSlateCard(data, entry, siteUrl) {
   return cv;
 }
 
+/* The season table on its own, for sending round midweek when there is no
+   weekend to report: where everyone stands, who is hot, who is cold, the
+   parlays that cashed and the money on the year. */
+function buildStandingsCard(data, siteUrl) {
+  const C = CARD;
+  const pad = C.pad, W = C.w;
+  const nameW = 300, colW = 165, cols = 4;
+  const tx = pad, tw = nameW + colW * cols;          // 300 + 660 = 960
+  const colX = i => tx + nameW + colW * i;
+  const colMid = i => colX(i) + colW / 2;
+
+  const rows = data.players.map(p => ({
+    name: p,
+    cfb: seasonRec(data, p, "cfb"),
+    nfl: seasonRec(data, p, "nfl"),
+    all: overallRec(data, p),
+    streak: playerStreak(data, p)
+  })).sort((a, b) => {
+    const pa = pct(a.all), pb = pct(b.all);
+    return (pb - pa) || (b.all.w - a.all.w) || a.name.localeCompare(b.name);
+  });
+
+  let gw = 0, gl = 0, gp = 0;
+  data.entries.forEach(e => data.players.forEach(p => {
+    const r = (e.picks[p] || {}).result;
+    if (r === "W") gw++; else if (r === "L") gl++; else if (r === "P") gp++;
+  }));
+
+  let hits = 0, done = 0;
+  data.entries.forEach(e => {
+    const t = tally(data, e);
+    if (t.w + t.l !== data.players.length) return;
+    done++;
+    if (t.l === 0) hits++;
+  });
+
+  const money = moneyFor(data);
+  const ladder = ladderColors(rows.map(r => r.all));
+
+  const tileY = pad + 150, tileH = 110;
+  const tableY = tileY + tileH + 26;
+  const headH = 84, rowH = 92;
+  const tableH = headH + rows.length * rowH;
+  const footY = tableY + tableH + 50;
+  const height = footY + 42 + pad;
+
+  const cv = document.createElement("canvas");
+  cv.width = W;
+  cv.height = height;
+  const ctx = cv.getContext("2d");
+
+  ctx.fillStyle = C.bg;
+  ctx.fillRect(0, 0, W, height);
+  ctx.textBaseline = "middle";
+
+  /* ---- header ---- */
+  ctx.textAlign = "left";
+  ctx.fillStyle = C.text;
+  ctx.font = cardFont(700, 54);
+  ctx.fillText("Parlay Club", pad, pad + 36);
+  ctx.fillStyle = C.muted;
+  ctx.font = cardFont(500, 34);
+  const yr = String(data.season || "").trim();
+  ctx.fillText(yr ? yr + " standings" : "Season standings", pad, pad + 92);
+
+  ctx.textAlign = "right";
+  ctx.fillStyle = C.dim;
+  ctx.font = cardFont(600, 22);
+  ctx.fillText(data.entries.length + (data.entries.length === 1 ? " SLATE" : " SLATES"), W - pad, pad + 26);
+  ctx.fillStyle = gw > gl ? C.win : gl > gw ? C.loss : C.text;
+  ctx.font = cardFont(700, 52);
+  ctx.fillText(gw + "-" + gl, W - pad, pad + 74);
+  if (gp) {
+    ctx.fillStyle = C.gold;
+    ctx.font = cardFont(600, 24);
+    ctx.fillText(gp + " still in play", W - pad, pad + 122);
+  }
+
+  /* ---- the two numbers everyone asks about ---- */
+  const tile = (x, w, lab, val, color, foot) => {
+    ctx.fillStyle = C.panel;
+    roundRect(ctx, x, tileY, w, tileH, 20);
+    ctx.fill();
+    ctx.textAlign = "left";
+    ctx.fillStyle = C.dim;
+    ctx.font = cardFont(750, 20);
+    ctx.fillText(lab, x + 26, tileY + 30);
+    ctx.fillStyle = color;
+    ctx.font = cardFont(800, 44);
+    ctx.fillText(val, x + 26, tileY + 72);
+    if (foot) {
+      ctx.fillStyle = C.dim;
+      ctx.font = cardFont(500, 20);
+      ctx.fillText(foot, x + 26, tileY + 96);
+    }
+  };
+  const halfW = (tw - 18) / 2;
+  tile(tx, halfW, "PARLAY WINS", String(hits),
+       hits ? C.win : C.text, done ? "of " + done + " settled" : "nothing settled yet");
+  tile(tx + halfW + 18, halfW, "ON THE YEAR", fmtMoney(money.net),
+       money.net > 0 ? C.win : money.net < 0 ? C.loss : C.text,
+       fmtMoney(money.wagered) + " in" + (money.unpriced ? ", " + money.unpriced + " unpriced" : ""));
+
+  /* ---- the table ---- */
+  ctx.fillStyle = C.panel;
+  roundRect(ctx, tx, tableY, tw, tableH, 24);
+  ctx.fill();
+
+  ctx.textAlign = "center";
+  ctx.fillStyle = C.dim;
+  ctx.font = cardFont(600, 19);
+  ["NCAA", "NFL", "TOTAL", "WIN %"].forEach((h, i) => ctx.fillText(h, colMid(i), tableY + 50));
+
+  ctx.fillStyle = C.line;
+  ctx.fillRect(tx, tableY + headH, tw, 1);
+
+  rows.forEach((r, i) => {
+    const y = tableY + headH + i * rowH;
+    const mid = y + rowH / 2;
+    if (i) { ctx.fillStyle = C.line; ctx.fillRect(tx + 24, y, tw - 48, 1); }
+
+    ctx.textAlign = "left";
+    ctx.fillStyle = C.dim;
+    ctx.font = cardFont(600, 24);
+    ctx.fillText(String(i + 1), tx + 28, mid);
+
+    // a run of two or more colours the name, same as the weekend card
+    const sc = streakColor(r.streak, C);
+    ctx.fillStyle = sc || C.text;
+    ctx.font = cardFont(sc ? 700 : 600, 34);
+    ctx.fillText(r.name, tx + 66, mid);
+    if (sc) {
+      const nx = tx + 66 + ctx.measureText(r.name).width + 12;
+      const tag = (r.streak > 0 ? "W" : "L") + Math.abs(r.streak);
+      ctx.font = cardFont(800, 20);
+      const tagW = ctx.measureText(tag).width + 16;
+      ctx.fillStyle = r.streak > 0 ? C.winBg : C.lossBg;
+      roundRect(ctx, nx, mid - 15, tagW, 30, 8);
+      ctx.fill();
+      ctx.textAlign = "center";
+      ctx.fillStyle = sc;
+      ctx.fillText(tag, nx + tagW / 2, mid + 1);
+    }
+
+    const rec = (rc, k) => {
+      const played = rc.w + rc.l;
+      ctx.textAlign = "center";
+      ctx.fillStyle = !played ? C.dim
+        : rc.w > rc.l ? C.win : rc.w < rc.l ? C.loss : C.text;
+      ctx.font = cardFont(600, 27);
+      ctx.fillText(played ? fmtRec(rc) : "—", colMid(k), mid);
+    };
+    rec(r.cfb, 0);
+    rec(r.nfl, 1);
+
+    // the combined record sits on its rung of the ladder
+    const c = ladder[i];
+    const cx = colMid(2);
+    if (c) {
+      ctx.fillStyle = `rgba(${c[0]}, ${c[1]}, ${c[2]}, 0.13)`;
+      roundRect(ctx, cx - 62, mid - 26, 124, 52, 14);
+      ctx.fill();
+    }
+    ctx.textAlign = "center";
+    ctx.fillStyle = c ? `rgb(${c[0]}, ${c[1]}, ${c[2]})` : C.dim;
+    ctx.font = cardFont(800, 32);
+    ctx.fillText(r.all.w + r.all.l ? fmtRec(r.all) : "—", cx, mid + 1);
+
+    ctx.fillStyle = C.muted;
+    ctx.font = cardFont(600, 25);
+    ctx.fillText(r.all.w + r.all.l ? (pct(r.all) * 100).toFixed(0) + "%" : "—", colMid(3), mid);
+  });
+
+  /* ---- footer ---- */
+  ctx.textAlign = "left";
+  ctx.fillStyle = C.dim;
+  ctx.font = cardFont(500, 24);
+  ctx.fillText(String(siteUrl || "").replace(/^https?:\/\//, "").replace(/\/$/, ""), pad, footY);
+
+  const hot = rows.filter(r => r.streak >= 2).length;
+  const cold = rows.filter(r => r.streak <= -2).length;
+  const note = [hot ? hot + " hot" : "", cold ? cold + " cold" : ""].filter(Boolean).join("   ");
+  if (note) {
+    ctx.textAlign = "right";
+    ctx.fillStyle = C.muted;
+    ctx.font = cardFont(700, 26);
+    ctx.fillText(note, W - pad, footY);
+  }
+
+  return cv;
+}
+
 /* ---------- iOS Home Screen status bar ---------- */
 
 /* Added to the Home Screen the page runs under the status bar, and iOS is
