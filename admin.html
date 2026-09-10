@@ -66,20 +66,33 @@ details.card.fold:not([open]) { padding-bottom: 6px; }
 }
 .lrow.editing { background: #16241c; border-radius: 10px; padding-left: 9px; padding-right: 9px; }
 
-/* A slate still running, with the one button that matters. */
-#inplayBar { margin-top: 14px; }
-.ipbar {
-  display: flex; align-items: center; gap: 11px;
-  border: 1px solid #6b5312;
-  background: linear-gradient(180deg, #241d08 0%, var(--panel-2) 70%);
-  border-radius: 14px;
-  padding: 11px 12px;
-  margin-bottom: 10px;
+/* The three ways in. Nothing else shares this screen. */
+.hubbtn { min-height: 56px; font-size: 16px; margin-top: 11px; }
+
+/* Every slate on one tappable line, live ones first. */
+#slateList { margin-top: 4px; }
+.slaterow {
+  display: flex; align-items: center; gap: 11px; width: 100%;
+  border: 1px solid var(--line);
+  background: var(--panel);
+  border-radius: 13px;
+  padding: 11px 13px;
+  margin-bottom: 8px;
+  text-align: left;
+  color: var(--text);
+  font-family: inherit;
+  cursor: pointer;
 }
-.ipbar.editing { border-color: var(--gold); }
-.ipbar-l { flex: 1; min-width: 0; }
-.ipbar-t { font-size: 14.5px; font-weight: 700; display: flex; align-items: center; gap: 8px; }
-.ipbar-m { font-size: 12px; color: var(--gold-soft); margin-top: 2px; font-weight: 620; }
+.slaterow:active { background: var(--panel-2); }
+.slaterow.live {
+  border-color: #6b5312;
+  background: linear-gradient(180deg, #241d08 0%, var(--panel-2) 70%);
+}
+.sl-l { flex: 1; min-width: 0; }
+.sl-t { font-size: 14.5px; font-weight: 700; display: flex; align-items: center; gap: 8px; }
+.sl-m { font-size: 12px; color: var(--muted); margin-top: 2px; font-weight: 620; }
+.slaterow.live .sl-m { color: var(--gold-soft); }
+.slaterow .chev { color: var(--dim); font-size: 11px; flex: none; }
 .ip-tag {
   font-size: 9.5px; font-weight: 850; letter-spacing: 0.9px;
   color: #241a02; background: var(--gold);
@@ -112,30 +125,34 @@ details.ebox .esum.blank { color: #414b5c; font-weight: 500; }
 
 /* Odds sit with the picks rather than behind the slate fold, because they get
    typed at the same time as the legs. */
+/* League and date on one line, small, always open: it is two taps of setup
+   and it does not deserve a fold of its own. */
+.slateline { display: grid; grid-template-columns: 1fr 128px; gap: 9px; align-items: center; }
+.slateline .seg { margin: 0; padding: 2px; }
+.slateline .seg button { height: 32px; font-size: 13px; }
+.slateline input[type="date"] {
+  min-height: 36px; margin: 0; padding: 0 9px;
+  text-align: center; font-size: 13.5px; font-weight: 650;
+}
+
 .oddsrow {
   display: grid;
-  grid-template-columns: 1fr 132px;
+  grid-template-columns: 1fr 120px;
   align-items: center;
-  gap: 10px;
-  margin-top: 13px;
-  padding: 10px 12px;
+  gap: 9px;
+  margin-top: 12px;
+  padding: 8px 11px;
   background: var(--panel-2);
   border: 1px solid var(--line);
   border-radius: 12px;
 }
 .oddsrow .fl { margin: 0; }
 .oddsrow input {
-  min-height: 40px; text-align: center;
-  font-size: 15px; font-weight: 700; font-family: var(--mono);
+  min-height: 36px; text-align: center; margin: 0;
+  font-size: 14px; font-weight: 700; font-family: var(--mono);
 }
 .oddsrow .hint { grid-column: 1 / -1; margin: 0; }
 
-/* The name gets its own row beside the odds so a slate logged weeks ago can be
-   renamed without going hunting inside the Slate fold. */
-.namerow { grid-template-columns: 1fr; gap: 7px; }
-.namerow input {
-  text-align: left; font-family: inherit; font-weight: 650; font-size: 15px;
-}
 
 /* The card heading and its running count share a line. */
 .chead { display: flex; align-items: baseline; gap: 10px; }
@@ -229,11 +246,12 @@ details.fold.quiet[open] > summary { color: var(--muted); margin-bottom: 4px; }
   <div class="top">
     <div class="bar">
       <div>
-        <h1 class="title">Enter results</h1>
-        <div class="sub-season" id="hdrSub">Admin</div>
+        <h1 class="title" id="hdrTitle">Admin</h1>
+        <div class="sub-season" id="hdrSub">Parlay Club</div>
       </div>
       <div class="bar-actions">
-        <a class="icon-btn" href="index.html">Done</a>
+        <button class="icon-btn" id="backBtn" style="display:none">Back</button>
+        <a class="icon-btn" id="doneLink" href="index.html">Done</a>
       </div>
     </div>
     <div id="topPad" style="height:11px"></div>
@@ -259,113 +277,120 @@ details.fold.quiet[open] > summary { color: var(--muted); margin-bottom: 4px; }
     </div>
   </div>
 
-  <!-- EDITOR -->
+  <!-- THREE SCREENS BEHIND THREE BUTTONS -->
   <div id="app" style="display:none">
 
-    <div id="inplayBar"></div>
+    <!-- 1. the hub: a choice, not a form -->
+    <div id="hub">
+      <button class="btn primary wide hubbtn" id="goNew">New parlay</button>
+      <button class="btn wide hubbtn" id="goEdit">Edit current or prior parlay</button>
+      <button class="btn wide hubbtn" id="goShare">Share</button>
 
-    <button class="btn primary wide" id="newEntry">New entry</button>
+      <details class="fold quiet" id="acct">
+        <summary>This device</summary>
+        <p class="cs">Your token lives in this browser only. It is never in the repo.</p>
+        <div class="two">
+          <button class="btn" id="showTok">Show token</button>
+          <button class="btn danger" id="signOut">Sign out</button>
+        </div>
+        <div class="hint" id="tokOut">Signed in to <span id="whoRepo"></span>.</div>
+      </details>
+    </div>
 
-    <div class="card" id="editor" style="display:none;margin-top:12px">
-      <div class="chead">
-        <h2 id="editorTitle">New entry</h2>
-        <span class="fcount" id="entriesCount"></span>
-      </div>
-
-      <details class="fold" id="setupFold">
-        <summary>Slate<span class="fcount" id="setupSum"></span></summary>
-
-        <label class="fl">League</label>
-        <div class="seg tight" id="lgSeg">
-          <button data-lg="cfb" class="on">College</button>
-          <button data-lg="nfl">NFL</button>
+    <!-- 2. one slate, new or old: league and date on a line, then the five, then the price -->
+    <div id="editorView" style="display:none">
+      <div class="card" id="editor">
+        <div class="chead">
+          <h2 id="editorTitle">New parlay</h2>
+          <span class="fcount" id="entriesCount"></span>
         </div>
 
-        <label class="fl" for="date" style="margin-top:11px">Date</label>
-        <input type="date" id="date">
+        <div class="slateline">
+          <div class="seg tight" id="lgSeg">
+            <button data-lg="cfb" class="on">College</button>
+            <button data-lg="nfl">NFL</button>
+          </div>
+          <input type="date" id="date">
+        </div>
         <div class="hint" id="dateHint"></div>
 
-      </details>
+        <div id="entries" style="margin-top:12px"></div>
 
-      <details class="fold" id="pasteFold">
-        <summary>Paste slip</summary>
-        <textarea id="pasteBox" rows="3" placeholder="Paste the whole slip, or one pick per line"></textarea>
-        <div class="two" style="margin-top:10px">
-          <button class="btn" id="fillPicks">Fill picks</button>
-          <button class="btn" id="clearPaste">Clear</button>
+        <div class="oddsrow">
+          <label class="fl" for="odds">Parlay odds</label>
+          <input type="text" id="odds" placeholder="+1157" inputmode="text"
+            autocomplete="off" autocapitalize="none" spellcheck="false">
+          <div class="hint" id="oddsHint">Off the slip. Optional.</div>
         </div>
-        <div class="assign" id="assign" hidden></div>
-        <div class="hint" id="pasteHint">Labels, odds and venue lines get ignored.</div>
-      </details>
 
-      <div class="oddsrow namerow">
-        <label class="fl" for="note">Name this bet</label>
-        <input type="text" id="note" placeholder="NFL Opening Night"
-          autocomplete="off" spellcheck="false">
-        <div class="hint">Optional. Rides after the date wherever the slate shows up.</div>
+        <div id="payoutRow" style="display:none;margin-top:11px">
+          <label class="fl" for="payout">Parlay payout</label>
+          <input type="text" id="payout" inputmode="decimal" placeholder="0.00"
+            autocomplete="off" spellcheck="false">
+          <div class="hint" id="payoutHint">All five hit. What did the parlay pay?</div>
+        </div>
+
+        <details class="fold" id="pasteFold">
+          <summary>Paste slip</summary>
+          <textarea id="pasteBox" rows="3" placeholder="Paste the whole slip, or one pick per line"></textarea>
+          <div class="two" style="margin-top:10px">
+            <button class="btn" id="fillPicks">Fill picks</button>
+            <button class="btn" id="clearPaste">Clear</button>
+          </div>
+          <div class="assign" id="assign" hidden></div>
+          <div class="hint" id="pasteHint">Labels, odds and venue lines get ignored.</div>
+        </details>
+
+        <button class="btn wide" id="allPending" style="margin-top:12px">Mark all pending</button>
+        <button class="btn danger wide" id="deleteBtn"
+          style="margin-top:9px;display:none">Delete this entry</button>
       </div>
 
-      <div class="oddsrow">
-        <label class="fl" for="odds">Parlay odds</label>
-        <input type="text" id="odds" placeholder="+1157" inputmode="text"
-          autocomplete="off" autocapitalize="none" spellcheck="false">
-        <div class="hint" id="oddsHint">Off the slip. Optional.</div>
-      </div>
-
-      <div id="entries" style="margin-top:12px"></div>
-
-      <div id="payoutRow" style="display:none;margin-top:13px">
-        <label class="fl" for="payout">Parlay payout</label>
-        <input type="text" id="payout" inputmode="decimal" placeholder="0.00"
-          autocomplete="off" spellcheck="false">
-        <div class="hint" id="payoutHint">All five hit. What did the parlay pay?</div>
-      </div>
-
-      <button class="btn wide" id="allPending" style="margin-top:12px">Mark all pending</button>
-      <button class="btn danger wide" id="deleteBtn"
-        style="margin-top:9px;display:none">Delete this entry</button>
-    </div>
-
-    <div class="card" id="shareCard" style="margin-top:14px">
-      <h2>Share</h2>
-      <p class="cs">Each one goes out as an image with the link to the site.</p>
-
-      <label class="fl" for="shareWk">Weekend</label>
-      <select id="shareWk"></select>
-      <button class="btn wide act" id="shareBtn" style="margin-top:11px">Share Weekend Update</button>
-      <button class="pvw" id="previewBtn">Preview it first</button>
-      <div class="shot" id="sharePrev" hidden></div>
-      <div class="hint" id="shareHint">Everyone's records for that weekend, plus the season table.</div>
-
-      <div class="sharesplit">
-        <label class="fl" for="slateWk">One slate's picks</label>
-        <select id="slateWk"></select>
-        <button class="btn wide act" id="slateBtn" style="margin-top:11px">Share the Slate</button>
-        <button class="pvw" id="slatePrev">Preview it first</button>
-        <div class="shot" id="slateShot" hidden></div>
-        <div class="hint">All five legs on one image, to send round before kickoff.</div>
+      <div class="savebar" id="savebar">
+        <div id="saveMsg" style="display:none;font-size:13px;font-weight:650;line-height:1.35;
+          padding:9px 11px;border-radius:10px;margin-bottom:9px"></div>
+        <div class="two" style="grid-template-columns:1fr 2fr">
+          <button class="btn" id="cancelEdit">Done</button>
+          <button class="btn primary" id="save">Save entry</button>
+        </div>
       </div>
     </div>
 
-    <a class="btn wide" id="histBtn" href="history.html" style="margin-top:14px">History</a>
+    <!-- 3. every slate, live ones first, one line each -->
+    <div id="listView" style="display:none">
+      <div id="slateList"></div>
+    </div>
 
-    <details class="fold quiet" id="acct">
-      <summary>This device</summary>
-      <p class="cs">Your token lives in this browser only. It is never in the repo.</p>
-      <div class="two">
-        <button class="btn" id="showTok">Show token</button>
-        <button class="btn danger" id="signOut">Sign out</button>
-      </div>
-      <div class="hint" id="tokOut">Signed in to <span id="whoRepo"></span>.</div>
-    </details>
+    <!-- 4. the three things worth sending round -->
+    <div id="shareView" style="display:none">
+      <div class="card" id="shareCard">
+        <p class="cs">Each one goes out as an image with the link to the site.</p>
 
-    <div class="savebar" id="savebar" style="display:none">
-      <div id="saveMsg" style="display:none;font-size:13px;font-weight:650;line-height:1.35;
-        padding:9px 11px;border-radius:10px;margin-bottom:9px"></div>
-      <div class="two" style="grid-template-columns:1fr 2fr">
-        <button class="btn" id="cancelEdit">Done</button>
-        <button class="btn primary" id="save">Save entry</button>
+        <button class="btn wide act" id="standBtn">Share Standings Update</button>
+        <button class="pvw" id="standPrev">Preview it first</button>
+        <div class="shot" id="standShot" hidden></div>
+        <div class="hint">Where everyone stands on the year, with the money and the runs.</div>
+
+        <div class="sharesplit">
+          <label class="fl" for="slateWk">One slate's picks</label>
+          <select id="slateWk"></select>
+          <button class="btn wide act" id="slateBtn" style="margin-top:11px">Share the Slate</button>
+          <button class="pvw" id="slatePrev">Preview it first</button>
+          <div class="shot" id="slateShot" hidden></div>
+          <div class="hint">All five legs on one image, to send round before kickoff.</div>
+        </div>
+
+        <div class="sharesplit">
+          <label class="fl" for="shareWk">Weekend</label>
+          <select id="shareWk"></select>
+          <button class="btn wide act" id="shareBtn" style="margin-top:11px">Share Weekend Update</button>
+          <button class="pvw" id="previewBtn">Preview it first</button>
+          <div class="shot" id="sharePrev" hidden></div>
+          <div class="hint" id="shareHint">Everyone's records for that weekend, plus the season table.</div>
+        </div>
       </div>
+
+      <a class="btn wide" id="histBtn" href="history.html" style="margin-top:14px">History</a>
     </div>
   </div>
 
@@ -378,6 +403,9 @@ let STATE = { owner: "", repo: "", branch: "main", token: "" };
 let DATA = null;
 let SHA = null;
 let EDITING = null;
+/* Any name an older slate was given. Not editable here any more, but kept so
+   a save does not quietly strip it. */
+let NOTE = "";
 let LG = "cfb";
 let dateTouched = false;
 
@@ -583,11 +611,6 @@ function updateDateHint() {
   $("dateHint").textContent = dupes.length
     ? base + ". That date already has " + dupes.length + " logged."
     : base;
-
-  /* Shut, the fold still has to say what this slate is. */
-  $("setupSum").textContent = date
-    ? entryLabel(date, LG) + suffixFor(date, LG)
-    : "pick a date";
 }
 
 $("lgSeg").addEventListener("click", e => {
@@ -935,9 +958,8 @@ $("save").addEventListener("click", async () => {
   try {
     DATA = await fetchFile(); // refresh so we never clobber a newer save
     const id = EDITING || nextIdFor(date, LG);
-    const note = $("note").value.trim();
     const odds = $("odds").value.trim();
-    const label = entryLabel(date, LG) + suffixFor(date, LG) + (note ? " · " + note : "");
+    const label = entryLabel(date, LG) + suffixFor(date, LG) + (NOTE ? " \u00b7 " + NOTE : "");
     const entry = { id, date, league: LG, label, odds, picks, payout };
     const i = DATA.entries.findIndex(e => e.id === id);
     if (i >= 0) DATA.entries[i] = entry; else DATA.entries.push(entry);
@@ -964,10 +986,10 @@ $("save").addEventListener("click", async () => {
 function resetForm() {
   EDITING = null;
   dateTouched = false;
-  $("editorTitle").textContent = "New entry";
+  $("editorTitle").textContent = "New parlay";
   syncSecondary();
   $("save").textContent = "Save entry";
-  $("note").value = "";
+  NOTE = "";
   $("odds").value = "";
   defaultLeagueAndDate();
   buildForm();
@@ -978,7 +1000,6 @@ function resetForm() {
   $("assign").innerHTML = "";
   $("pasteHint").textContent = "Labels, odds and venue lines get ignored.";
   $("pasteFold").open = false;
-  $("setupFold").open = false;
   $("acct").open = false;
   $("payout").value = "";
   syncPayoutRow();
@@ -1072,32 +1093,66 @@ $("clearPaste").addEventListener("click", () => {
 });
 
 /* Everything on screen that depends on the file, redrawn together. */
-function renderList() {
-  renderInPlayBar();
-  renderShare();
+/* Four screens, one at a time. The first thing this page asks for is a
+   choice, so nothing is on screen that the moment does not need. */
+const VIEWS = { hub: "hub", editor: "editorView", list: "listView", share: "shareView" };
+const TITLES = { hub: "Admin", editor: "Enter results", list: "Edit a parlay", share: "Share" };
+let VIEW = "hub";
+
+function showView(name) {
+  VIEW = name;
+  Object.keys(VIEWS).forEach(k => {
+    $(VIEWS[k]).style.display = k === name ? "block" : "none";
+  });
+  $("backBtn").style.display = name === "hub" ? "none" : "inline-flex";
+  $("doneLink").style.display = name === "hub" ? "inline-flex" : "none";
+  $("hdrTitle").textContent = TITLES[name];
+  window.scrollTo({ top: 0 });
 }
 
-/* Anything still running sits at the top with one button: Settle. This is the
-   only place a half-finished slate surfaces, so nothing gets forgotten. */
-function renderInPlayBar() {
-  const el = $("inplayBar");
-  const live = inPlayEntries(DATA);
-  if (!live.length) { el.innerHTML = ""; return; }
+/* Whatever is on screen, keep it honest after a save. */
+function renderList() {
+  if (VIEW === "list") renderSlateList();
+  if (VIEW === "share") renderShare();
+}
 
-  el.innerHTML = live.map(e => {
+/* Every slate on one line, the ones still running first, because those are
+   the ones with a reason to be opened. */
+function renderSlateList() {
+  const el = $("slateList");
+  const live = inPlayEntries(DATA);                              // newest first
+  const rest = DATA.entries.filter(e => !inPlay(DATA, e)).slice().reverse();
+  const all = live.concat(rest);
+
+  if (!all.length) {
+    el.innerHTML = '<div class="card"><p class="cs">Nothing logged yet. Start with New parlay.</p></div>';
+    return;
+  }
+
+  el.innerHTML = all.map(e => {
     const t = tally(DATA, e);
-    return `<div class="ipbar${EDITING === e.id ? " editing" : ""}">
-      <div class="ipbar-l">
-        <div class="ipbar-t"><span class="ip-tag">IN PLAY</span>${esc(e.label)}</div>
-        <div class="ipbar-m">${t.w}-${t.l} &middot; ${t.p}${t.p === 1 ? " leg" : " legs"} to play</div>
-      </div>
-      <button class="btn sm" data-settle="${esc(e.id)}">Settle/Edit</button>
-    </div>`;
+    const running = t.p > 0;
+    const bits = [t.w + "-" + t.l];
+    if (running) bits.push(t.p + (t.p === 1 ? " leg" : " legs") + " to play");
+    if (e.odds) bits.push(fmtOdds(e.odds));
+    if (e.payout) bits.push(fmtMoney(e.payout) + " back");
+    return `<button class="slaterow${running ? " live" : ""}" data-edit="${esc(e.id)}">
+      <span class="sl-l">
+        <span class="sl-t">${running ? '<span class="ip-tag">IN PLAY</span>' : ""}${esc(e.label)}</span>
+        <span class="sl-m">${esc(bits.join(" \u00b7 "))}</span>
+      </span>
+      <span class="chev">&#9654;</span>
+    </button>`;
   }).join("");
 
-  el.querySelectorAll("[data-settle]").forEach(b =>
-    b.addEventListener("click", () => editEntry(b.dataset.settle)));
+  el.querySelectorAll("[data-edit]").forEach(b =>
+    b.addEventListener("click", () => editEntry(b.dataset.edit)));
 }
+
+$("goNew").addEventListener("click", () => { resetForm(); showView("editor"); say(""); });
+$("goEdit").addEventListener("click", () => { renderSlateList(); showView("list"); say(""); });
+$("goShare").addEventListener("click", () => { renderShare(); showView("share"); say(""); });
+$("backBtn").addEventListener("click", () => { resetForm(); showView("hub"); say(""); });
 
 function editEntry(id) {
   const e = DATA.entries.find(x => x.id === id);
@@ -1108,25 +1163,21 @@ function editEntry(id) {
   setLeague(e.league, false);
   $("date").value = e.date || "";
   $("odds").value = e.odds || "";
-  // the label carries any name after a middle dot, so editing keeps it
-  $("note").value = String(e.label || "").split(" · ").slice(1).join(" · ");
+  /* Slates are not named here any more, but the ones that already carry a name
+     keep it: it rides along in the label rather than getting wiped on save. */
+  NOTE = String(e.label || "").split(" \u00b7 ").slice(1).join(" \u00b7 ");
   $("editorTitle").textContent = "Editing " + e.label;
   syncSecondary();
   $("save").textContent = "Update entry";
   buildForm(e);
   updateDateHint();
-  $("setupFold").open = false;   // it is already set; the picks are the job
   $("pasteFold").open = false;
-  renderInPlayBar();             // highlight the slate being worked on
   window.scrollTo({ top: 0, behavior: "smooth" });
   say("info", "Editing " + e.label + ". The league is locked while editing.");
 }
 
-/* The editor stays out of the way until there is something to work on. */
 function openEditor() {
-  $("editor").style.display = "block";
-  $("savebar").style.display = "block";
-  $("newEntry").style.display = "none";
+  showView("editor");
   syncSecondary();
 }
 
@@ -1137,17 +1188,9 @@ function syncSecondary() {
 }
 
 function closeEditor() {
-  $("editor").style.display = "none";
-  $("savebar").style.display = "none";
-  $("newEntry").style.display = "block";
+  showView("hub");
   say("");
 }
-
-$("newEntry").addEventListener("click", () => {
-  resetForm();
-  openEditor();
-  window.scrollTo({ top: 0, behavior: "smooth" });
-});
 
 async function deleteEntry(id) {
   const e = DATA.entries.find(x => x.id === id);
@@ -1181,9 +1224,10 @@ function renderShare() {
   sel.innerHTML = WEEKENDS.map(w =>
     `<option value="${esc(w.key)}">${esc(w.label)}</option>`).join("");
   if (WEEKENDS.some(w => w.key === keep)) sel.value = keep;
-  $("shareCard").style.display = WEEKENDS.length ? "block" : "none";
   $("sharePrev").hidden = true;
   $("sharePrev").innerHTML = "";
+  $("standShot").hidden = true;
+  $("standShot").innerHTML = "";
 
   // the slate picker is one slate at a time, newest first
   const ssel = $("slateWk");
@@ -1290,6 +1334,24 @@ $("slateBtn").addEventListener("click", async () => {
   const url = siteUrl();
   await shareCanvas(buildSlateCard(DATA, e, url),
     "parlay-club-slate-" + e.id + ".png", url, url);
+});
+
+/* The season table on its own, the midweek update. */
+$("standBtn").addEventListener("click", async () => {
+  const url = siteUrl();
+  const cv = buildStandingsCard(DATA, url);
+  await shareCanvas(cv, "parlay-club-standings.png", url, url);
+});
+
+$("standPrev").addEventListener("click", () => {
+  const box = $("standShot");
+  box.innerHTML = "";
+  const img = new Image();
+  img.src = buildStandingsCard(DATA, siteUrl()).toDataURL("image/png");
+  img.style.cssText =
+    "display:block;width:100%;margin-top:12px;border-radius:12px;border:1px solid var(--line)";
+  box.appendChild(img);
+  box.hidden = false;
 });
 
 $("slatePrev").addEventListener("click", () => {
