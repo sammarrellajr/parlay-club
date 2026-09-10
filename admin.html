@@ -130,6 +130,13 @@ details.ebox .esum.blank { color: #414b5c; font-weight: 500; }
 }
 .oddsrow .hint { grid-column: 1 / -1; margin: 0; }
 
+/* The name gets its own row beside the odds so a slate logged weeks ago can be
+   renamed without going hunting inside the Slate fold. */
+.namerow { grid-template-columns: 1fr; gap: 7px; }
+.namerow input {
+  text-align: left; font-family: inherit; font-weight: 650; font-size: 15px;
+}
+
 /* The card heading and its running count share a line. */
 .chead { display: flex; align-items: baseline; gap: 10px; }
 .chead h2 { margin: 0; }
@@ -278,10 +285,6 @@ details.fold.quiet[open] > summary { color: var(--muted); margin-bottom: 4px; }
         <input type="date" id="date">
         <div class="hint" id="dateHint"></div>
 
-        <label class="fl" for="note">Name it (optional)</label>
-        <input type="text" id="note" placeholder="Bonus, Thursday nighter, second slip"
-          autocomplete="off" spellcheck="false">
-        <div class="hint">For an extra parlay on top of the usual slate.</div>
       </details>
 
       <details class="fold" id="pasteFold">
@@ -294,6 +297,13 @@ details.fold.quiet[open] > summary { color: var(--muted); margin-bottom: 4px; }
         <div class="assign" id="assign" hidden></div>
         <div class="hint" id="pasteHint">Labels, odds and venue lines get ignored.</div>
       </details>
+
+      <div class="oddsrow namerow">
+        <label class="fl" for="note">Name this bet</label>
+        <input type="text" id="note" placeholder="NFL Opening Night"
+          autocomplete="off" spellcheck="false">
+        <div class="hint">Optional. Rides after the date wherever the slate shows up.</div>
+      </div>
 
       <div class="oddsrow">
         <label class="fl" for="odds">Parlay odds</label>
