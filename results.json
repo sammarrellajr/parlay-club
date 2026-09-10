@@ -103,8 +103,6 @@
       "id": "2026-09-06-nfl",
       "date": "2026-09-09",
       "league": "nfl",
-      "label": "Wed 9/9 NFL",
-      "odds": "+2100",
       "picks": {
         "Drew": {
           "result": "L",
@@ -125,6 +123,38 @@
         "Tyler": {
           "result": "L",
           "pick": "Henry Over 34.5 Rec"
+        }
+      },
+      "odds": "+2100",
+      "payout": 0,
+      "label": "Wed 9/9 NFL"
+    },
+    {
+      "id": "2026-09-13-nfl",
+      "date": "2026-09-13",
+      "league": "nfl",
+      "label": "Sun 9/13 NFL",
+      "odds": "",
+      "picks": {
+        "Drew": {
+          "result": "P",
+          "pick": "McCaffrey Over 4.5 Rec"
+        },
+        "Pat": {
+          "result": "P",
+          "pick": ""
+        },
+        "Sam": {
+          "result": "P",
+          "pick": "Evans Over 3.5 Rec"
+        },
+        "Tim": {
+          "result": "P",
+          "pick": "McCaffrey Over 39.5 Rec"
+        },
+        "Tyler": {
+          "result": "P",
+          "pick": ""
         }
       },
       "payout": 0
