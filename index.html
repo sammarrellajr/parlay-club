@@ -143,6 +143,8 @@
 .ip-share { width: 100%; margin-top: 12px; }
 
 .wk-share { width: 100%; margin-top: 11px; }
+/* Sends the season table itself, for a midweek "here is where we stand". */
+.stand-share { margin: -12px 0 20px; }
 
 .parlay.mini { padding: 9px 14px; margin-bottom: 12px; }
 .parlay.mini .plab { font-size: 10px; letter-spacing: 0.8px; }
@@ -198,6 +200,7 @@
     <span class="note" id="secNote"></span>
   </div>
   <div class="rows" id="rows"></div>
+  <button class="btn wide stand-share" id="shareStandings">Share Standings Update</button>
 
   <div class="rule"></div>
 
@@ -314,6 +317,34 @@ function renderInPlay() {
   el.querySelectorAll("[data-slate]").forEach(b =>
     b.addEventListener("click", () => shareSlate(b.dataset.slate)));
 }
+
+/* The season table on its own, for a midweek update with no slate to report. */
+async function shareStandings() {
+  const url = location.href.replace(/[^/]*$/, "").replace(/\/$/, "") + "/";
+  const cv = buildStandingsCard(DATA, url);
+  const blob = await new Promise(res => cv.toBlob(res, "image/png"));
+  const file = new File([blob], "parlay-club-standings.png", { type: "image/png" });
+  try {
+    if (navigator.canShare && navigator.canShare({ files: [file] })) {
+      await navigator.share({ files: [file], text: url });
+    } else if (navigator.share) {
+      await navigator.share({ text: url, url });
+      say("info", "Shared the link. This browser will not attach images.");
+    } else {
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = file.name;
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+      say("info", "Saved the image. This browser has no share sheet.");
+    }
+  } catch (err) {
+    if (err && err.name === "AbortError") return;
+    say("err", "Share failed: " + err.message);
+  }
+}
+
+$("shareStandings").addEventListener("click", shareStandings);
 
 /* One image of a slate's five legs, for sending round. */
 async function shareSlate(id) {
