@@ -134,7 +134,7 @@
       "date": "2026-09-10",
       "league": "nfl",
       "label": "Thu 9/10 NFL",
-      "odds": "",
+      "odds": "+1400",
       "picks": {
         "Drew": {
           "result": "P",
@@ -142,7 +142,7 @@
         },
         "Pat": {
           "result": "P",
-          "pick": ""
+          "pick": "Kittle TD"
         },
         "Sam": {
           "result": "P",
