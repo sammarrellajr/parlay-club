@@ -1336,10 +1336,12 @@ function buildStandingsCard(data, siteUrl) {
     ctx.font = cardFont(600, 24);
     ctx.fillText(String(i + 1), tx + 28, mid);
 
-    // a run of two or more colours the name, same as the weekend card
+    /* On this card the colour is spent on two things only: the run tag and the
+       overall record. The name and the league splits stay plain so the eye is
+       not pulled five ways at once. */
     const sc = streakColor(r.streak, C);
-    ctx.fillStyle = sc || C.text;
-    ctx.font = cardFont(sc ? 700 : 600, 34);
+    ctx.fillStyle = C.text;
+    ctx.font = cardFont(600, 34);
     ctx.fillText(r.name, tx + 66, mid);
     if (sc) {
       const nx = tx + 66 + ctx.measureText(r.name).width + 12;
@@ -1357,8 +1359,7 @@ function buildStandingsCard(data, siteUrl) {
     const rec = (rc, k) => {
       const played = rc.w + rc.l;
       ctx.textAlign = "center";
-      ctx.fillStyle = !played ? C.dim
-        : rc.w > rc.l ? C.win : rc.w < rc.l ? C.loss : C.text;
+      ctx.fillStyle = played ? C.text : C.dim;
       ctx.font = cardFont(600, 27);
       ctx.fillText(played ? fmtRec(rc) : "—", colMid(k), mid);
     };
