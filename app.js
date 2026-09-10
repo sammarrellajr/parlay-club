@@ -268,9 +268,13 @@ function computeStats(data) {
       cfbPct: pct(s.cfb),
       nflPct: pct(s.nfl),
       allPct: pct(s.all),
-      streak: { cfb: winStreak(s.seq.cfb), nfl: winStreak(s.seq.nfl), all: winStreak(s.seq.all) },
+      streak: { cfb: curStreak(s.seq.cfb), nfl: curStreak(s.seq.nfl), all: curStreak(s.seq.all) },
       best: { cfb: bestRun(s.seq.cfb), nfl: bestRun(s.seq.nfl), all: bestRun(s.seq.all) },
-      solo: soloLosses(data, p)
+      solo: {
+        cfb: soloLosses(data, p, "cfb"),
+        nfl: soloLosses(data, p, "nfl"),
+        all: soloLosses(data, p)
+      }
     };
   });
 
@@ -312,13 +316,34 @@ function computeStats(data) {
 /* Consecutive wins ending at the most recent decided entry. Blank and pending
    weeks are skipped rather than treated as a loss, so an unsettled leg does
    not kill a run. */
-function winStreak(seq) {
-  let n = 0;
+/* The run in progress, signed: 3 is three straight wins, -3 is three straight
+   losses. Pending and blank legs sit out rather than breaking the run. */
+function curStreak(seq) {
+  let n = 0, dir = null;
   for (let i = seq.length - 1; i >= 0; i--) {
     if (seq[i] === null) continue;
-    if (seq[i] === "W") n++; else break;
+    if (dir === null) dir = seq[i];
+    if (seq[i] !== dir) break;
+    n++;
   }
-  return n;
+  return dir === "L" ? -n : n;
+}
+
+/* The same run for one player straight off the entries, for the share card,
+   which builds its own rows rather than going through computeStats. */
+function playerStreak(data, player) {
+  const seq = data.entries.map(e => {
+    const r = (e.picks[player] || {}).result;
+    return r === "W" || r === "L" ? r : null;
+  });
+  return curStreak(seq);
+}
+
+/* Two or more either way is worth a colour. Anything less is just noise. */
+function streakColor(n, C) {
+  if (n >= 2) return C.win;
+  if (n <= -2) return C.loss;
+  return null;
 }
 
 /* The longest run of wins anywhere in the season, not just the current one. */
@@ -333,9 +358,10 @@ function bestRun(seq) {
 
 /* Slates where this one was the only loss: the parlay was 4-1 and he was the
    1. The stat everyone in the group actually wants to know. */
-function soloLosses(data, player) {
+function soloLosses(data, player, league) {
   let n = 0;
   data.entries.forEach(e => {
+    if (league && e.league !== league) return;
     if ((e.picks[player] || {}).result !== "L") return;
     const rest = data.players.filter(p => p !== player);
     if (rest.every(p => (e.picks[p] || {}).result === "W")) n++;
@@ -822,7 +848,8 @@ function buildShareCard(data, weekend, siteUrl) {
     wkNfl: weekendCell(weekend.entries, "nfl", p),
     sCfb: seasonRec(data, p, "cfb"),
     sNfl: seasonRec(data, p, "nfl"),
-    all: overallRec(data, p)
+    all: overallRec(data, p),
+    streak: playerStreak(data, p)
   })).sort((a, b) => {
     const pa = pct(a.all), pb = pct(b.all);
     return (pb - pa) || (b.all.w - a.all.w) || a.name.localeCompare(b.name);
@@ -938,10 +965,26 @@ function buildShareCard(data, weekend, siteUrl) {
     const mid = y + rowH / 2;
     if (i) { ctx.fillStyle = C.line; ctx.fillRect(tx + 24, y, tw - 48, 1); }
 
+    /* A run of two or more colours the name and hangs a small W3 / L2 on it,
+       so whoever opens the picture sees who is hot and who is cold without
+       counting rows. */
+    const sc = streakColor(r.streak, C);
     ctx.textAlign = "left";
-    ctx.fillStyle = C.text;
-    ctx.font = cardFont(600, 34);
+    ctx.fillStyle = sc || C.text;
+    ctx.font = cardFont(sc ? 700 : 600, 34);
     ctx.fillText(r.name, tx + 30, mid);
+    if (sc) {
+      const nx = tx + 30 + ctx.measureText(r.name).width + 12;
+      const tag = (r.streak > 0 ? "W" : "L") + Math.abs(r.streak);
+      ctx.font = cardFont(800, 20);
+      const tw2 = ctx.measureText(tag).width + 16;
+      ctx.fillStyle = r.streak > 0 ? "#12341f" : "#351511";
+      roundRect(ctx, nx, mid - 15, tw2, 30, 8);
+      ctx.fill();
+      ctx.textAlign = "center";
+      ctx.fillStyle = sc;
+      ctx.fillText(tag, nx + tw2 / 2, mid + 1);
+    }
 
     // this weekend
     [r.wkCfb, r.wkNfl].forEach((cell, k) => {
