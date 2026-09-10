@@ -309,6 +309,9 @@ button { touch-action: manipulation; }
   white-space: nowrap;
 }
 
+/* The same badge the other way up, for a run of losses. */
+.streak.cold { color: var(--loss-soft); background: var(--loss-bg); }
+
 .dots { display: flex; gap: 3px; }
 .dot {
   width: 15px;
