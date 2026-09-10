@@ -395,9 +395,11 @@ function render() {
     ? n + (key === "all" ? (n === 1 ? " slate" : " slates")
                          : (n === 1 ? " week" : " weeks")) : "";
   const hot = rows.filter(r => r.streak[key] >= 2).length;
+  const cold = rows.filter(r => r.streak[key] <= -2).length;
   const pend = STATS.pending[key];
   $("secNote").textContent = [
-    hot ? hot + " on a streak" : "",
+    hot ? hot + " hot" : "",
+    cold ? cold + " cold" : "",
     pend ? pend + " pending" : ""
   ].filter(Boolean).join(" · ");
 
@@ -405,29 +407,62 @@ function render() {
 
   if (key === "all") { renderAll(rows, ladder); renderHistory("all", "Overall"); return; }
 
+  /* The league tabs open the same way the All tab does, showing only that
+     league's picks, because "how has Tim done in NFL" is the question the tab
+     was picked for in the first place. */
   $("rows").innerHTML = rows.map((r, i) => {
     const rc = r[key];
     const p = key === "cfb" ? r.cfbPct : r.nflPct;
     const played = rc.w + rc.l;
-    const st = r.streak[key];
     const lead = isLeader(key, r.name, played);
     const sub = played
-      ? streakBadge(st)
+      ? streakBadge(r.streak[key])
       : '<span class="nodata">No results yet</span>';
-    return `<div class="prow${lead ? " lead" : ""}">
-      <div class="pnum">${i + 1}</div>
-      <div class="pmain">
-        <div class="pnm">${esc(r.name)}</div>
-        ${sub ? `<div class="psub">${sub}</div>` : ""}
+    return `<div class="prow all${lead ? " lead" : ""}${OPEN === r.name ? " open" : ""}" data-nm="${esc(r.name)}">
+      <div class="ptop">
+        <div class="pnum">${i + 1}</div>
+        <div class="pmain">
+          <div class="pnm">${esc(r.name)}</div>
+          ${sub ? `<div class="psub">${sub}</div>` : ""}
+        </div>
+        <div class="pright">
+          <div class="${rungClass(ladder[i])}"${rungStyle(ladder[i])}>${fmtRec(rc)}</div>
+          <div class="ppct">${fmtPct(p, rc)}</div>
+        </div>
+        <span class="pchev">&#9654;</span>
       </div>
-      <div class="pright">
-        <div class="${rungClass(ladder[i])}"${rungStyle(ladder[i])}>${fmtRec(rc)}</div>
-        <div class="ppct">${fmtPct(p, rc)}</div>
-      </div>
+      <div class="pdet">${personDetail(r, key)}</div>
     </div>`;
   }).join("");
 
+  wireDrilldown();
   renderHistory(key, key === "cfb" ? "College" : "NFL");
+}
+
+/* The two stats and the week-by-week, scoped to whichever tab is showing. */
+function personDetail(r, key) {
+  const best = r.best[key];
+  const solo = r.solo[key];
+  return `<div class="pstats">
+      <div class="pstat"><span class="psl">Best run</span><span class="psv">${
+        best ? best + (best === 1 ? " win" : " straight") : "&mdash;"}</span></div>
+      <div class="pstat"><span class="psl">Only miss</span><span class="psv${
+        solo ? " bad" : ""}">${solo ? solo + (solo === 1 ? " slate" : " slates") : "never"}</span></div>
+    </div>
+    ${personWeeks(r.name, key === "all" ? null : key)}`;
+}
+
+/* One row open at a time, and it survives a re-render because OPEN is held
+   outside the markup. */
+function wireDrilldown() {
+  $("rows").querySelectorAll(".prow.all").forEach(row => {
+    row.addEventListener("click", () => {
+      const nm = row.dataset.nm;
+      OPEN = OPEN === nm ? null : nm;
+      $("rows").querySelectorAll(".prow.all").forEach(x =>
+        x.classList.toggle("open", x.dataset.nm === OPEN));
+    });
+  });
 }
 
 /* A row's record wears its rung of the ladder. Nobody who has yet to play gets
@@ -470,26 +505,11 @@ function renderAll(rows, ladder) {
         ${half("NCAA", r.cfb, r.cfbPct)}
         ${half("NFL", r.nfl, r.nflPct)}
       </div>
-      <div class="pdet">
-        <div class="pstats">
-          <div class="pstat"><span class="psl">Best run</span><span class="psv">${
-            r.best.all ? r.best.all + (r.best.all === 1 ? " win" : " straight") : "&mdash;"}</span></div>
-          <div class="pstat"><span class="psl">Only miss</span><span class="psv${
-            r.solo ? " bad" : ""}">${r.solo ? r.solo + (r.solo === 1 ? " slate" : " slates") : "never"}</span></div>
-        </div>
-        ${personWeeks(r.name)}
-      </div>
+      <div class="pdet">${personDetail(r, "all")}</div>
     </div>`;
   }).join("");
 
-  $("rows").querySelectorAll(".prow.all").forEach(row => {
-    row.addEventListener("click", () => {
-      const nm = row.dataset.nm;
-      OPEN = OPEN === nm ? null : nm;
-      $("rows").querySelectorAll(".prow.all").forEach(x =>
-        x.classList.toggle("open", x.dataset.nm === OPEN));
-    });
-  });
+  wireDrilldown();
 }
 
 /* Just the day, no league and no slate name: the row has its own league tag
@@ -501,8 +521,9 @@ function shortDate(iso) {
 }
 
 /* Everything one person has logged, newest first, both leagues. */
-function personWeeks(name) {
+function personWeeks(name, league) {
   const mine = DATA.entries.slice().reverse().filter(e => {
+    if (league && e.league !== league) return false;
     const v = e.picks[name] || {};
     return v.result || v.pick;
   });
@@ -521,10 +542,12 @@ function personWeeks(name) {
   }).join("");
 }
 
-/* Spelled out rather than a row of letters. Nothing shows below two. */
+/* Spelled out rather than a row of letters, and it cuts both ways: green for
+   a run of wins, red for a run of losses. Nothing shows below two. */
 function streakBadge(n) {
-  if (n < 2) return "";
-  return `<span class="streak">${n} Straight Wins</span>`;
+  if (n >= 2) return `<span class="streak">${n} Straight Wins</span>`;
+  if (n <= -2) return `<span class="streak cold">${-n} Straight Losses</span>`;
+  return "";
 }
 
 /* A slate is done when all five legs are settled: then it either cashed or it
