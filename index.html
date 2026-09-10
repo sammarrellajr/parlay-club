@@ -58,7 +58,14 @@
 .psv.bad { color: var(--loss-soft); }
 .prow.all.open .pdet { display: block; }
 .drow { display: flex; align-items: center; gap: 9px; padding: 4px 0; }
-.dwk { font-size: 11px; color: var(--dim); width: 82px; flex: none; white-space: nowrap; }
+.dwk { font-size: 11px; color: var(--dim); width: 50px; flex: none; white-space: nowrap; }
+/* A fixed-width league tag, so a long slate name can never push the pick off
+   the row the way the full label used to. */
+.dlg {
+  font-size: 9px; font-weight: 800; letter-spacing: 0.4px; flex: none;
+  width: 36px; text-align: center; padding: 2px 0; border-radius: 4px;
+  background: var(--panel-2); border: 1px solid var(--line); color: var(--dim);
+}
 .dpk {
   font-size: 12.5px; color: var(--muted); flex: 1; min-width: 0;
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
@@ -460,7 +467,7 @@ function renderAll(rows, ladder) {
         <span class="pchev">&#9654;</span>
       </div>
       <div class="split">
-        ${half("College", r.cfb, r.cfbPct)}
+        ${half("NCAA", r.cfb, r.cfbPct)}
         ${half("NFL", r.nfl, r.nflPct)}
       </div>
       <div class="pdet">
@@ -485,6 +492,14 @@ function renderAll(rows, ladder) {
   });
 }
 
+/* Just the day, no league and no slate name: the row has its own league tag
+   and the pick needs the rest of the width. */
+function shortDate(iso) {
+  const [y, m, d] = String(iso || "").split("-").map(Number);
+  if (!y || !m || !d) return "";
+  return DOW[new Date(y, m - 1, d).getDay()] + " " + m + "/" + d;
+}
+
 /* Everything one person has logged, newest first, both leagues. */
 function personWeeks(name) {
   const mine = DATA.entries.slice().reverse().filter(e => {
@@ -497,9 +512,9 @@ function personWeeks(name) {
     const v = e.picks[name] || {};
     const cls = v.result === "W" ? "w" : v.result === "L" ? "l" : v.result === "P" ? "p" : "none";
     const mark = v.result || "-";
-    const when = e.label.replace(/ College| NFL/, "") + (e.league === "cfb" ? " C" : " N");
     return `<div class="drow">
-      <span class="dwk">${esc(when)}</span>
+      <span class="dwk">${esc(shortDate(e.date) || e.label)}</span>
+      <span class="dlg">${e.league === "nfl" ? "NFL" : "NCAA"}</span>
       <span class="dot ${cls}">${mark}</span>
       <span class="dpk${v.pick ? "" : " blank"}">${esc(v.pick || "no pick logged")}</span>
     </div>`;
