@@ -1009,9 +1009,16 @@ function resetForm() {
 let PARSED = [];      // picks read out of the paste box, editable afterwards
 let ASSIGNED = [];    // player each parsed pick belongs to, or null to skip
 
-$("fillPicks").addEventListener("click", () => {
-  PARSED = parsePastedPicks($("pasteBox").value);
+$("fillPicks").addEventListener("click", async () => {
+  const slip = parseSlip($("pasteBox").value);
+  PARSED = slip.picks;
   if (!PARSED.length) { say("err", "Nothing that looks like a pick in that paste."); return; }
+
+  /* A DraftKings slip carries its own price. Take it unless one is typed. */
+  if (slip.odds && !$("odds").value.trim()) {
+    $("odds").value = slip.odds;
+    syncPayoutRow();
+  }
 
   ASSIGNED = autoAssign(PARSED, DATA.players, DATA);
   $("pasteFold").open = true;
@@ -1019,8 +1026,25 @@ $("fillPicks").addEventListener("click", () => {
   applyAssign();
 
   const guessed = PARSED.filter((t, i) => ASSIGNED[i] && guessPlayer(t, DATA) === ASSIGNED[i]).length;
-  say("ok", "Read " + PARSED.length + " pick" + (PARSED.length === 1 ? "" : "s") +
-      (guessed ? ", " + guessed + " matched from past picks." : "."));
+  const note = [
+    "Read " + PARSED.length + " pick" + (PARSED.length === 1 ? "" : "s"),
+    slip.odds ? "at " + slip.odds : "",
+    guessed ? guessed + " matched from past picks" : ""
+  ].filter(Boolean).join(", ") + ".";
+  say("ok", note);
+
+  /* Totals arrive with a city instead of a matchup. Go and get the matchup. */
+  const blanks = PARSED.filter(p => /\([^)]+\)\s*$/.test(p)).length;
+  if (!blanks) return;
+  say("info", note + " Looking up " + blanks + " total" + (blanks === 1 ? "" : "s") + "...");
+  const named = await nameVenueTotals(PARSED, $("date").value, LG);
+  const fixed = named.filter((p, i) => p !== PARSED[i]).length;
+  PARSED = named;
+  renderAssign();
+  applyAssign();
+  say(fixed ? "ok" : "info", fixed
+    ? note + " Named " + fixed + " total" + (fixed === 1 ? "" : "s") + " off the venue."
+    : note + " Could not match the venue to a game, so the city stays on the pick.");
 });
 
 /* One row per parsed pick: editable text plus a name picker, so neither the
