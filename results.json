@@ -137,11 +137,11 @@
       "odds": "+2200",
       "picks": {
         "Drew": {
-          "result": "P",
+          "result": "W",
           "pick": "McCaffrey Over 4.5 Rec"
         },
         "Pat": {
-          "result": "P",
+          "result": "W",
           "pick": "Kittle TD"
         },
         "Sam": {
@@ -149,7 +149,7 @@
           "pick": "Evans Over 3.5 Rec"
         },
         "Tim": {
-          "result": "P",
+          "result": "L",
           "pick": "McCaffrey Over 39.5 Rec"
         },
         "Tyler": {
