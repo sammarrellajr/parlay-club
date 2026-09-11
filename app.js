@@ -535,18 +535,95 @@ function suggestPicks(query, data, limit) {
    and venue lines that arrive as a bare "@" followed by "Atlanta, GA".
    Rather than blacklist every variant, keep only lines that actually look
    like a pick: they contain letters, and they are not a label or a place. */
-const PASTE_NOISE = /^(spread|total|totals|moneyline|money line|straight|parlay|same game parlay|sgp|parlay boost ineligible|boost applied.*|open|pending|live|won|win|lost|loss|push|void|cashed out|cash out|to win|to pay|wager|bet slip|\d+ pick parlay)$/i;
+const PASTE_NOISE = /^(spread|total|totals|moneyline|money line|straight|parlay|same game parlay|sgp|parlay boost ineligible|boost applied.*|open|pending|live|won|win|lost|loss|push|void|cashed out|cash out|to win|to pay|wager|paid|bet slip|draftkings|the crown is yours|[+-]?\d+% parlay boost|\d+ pick parlay)[:.]?$/i;
 
-const VENUE_LINE = /^@?\s*([A-Za-z .'&-]+),\s*[A-Z]{2}\.?$/;   // "Atlanta, GA" or "@ Atlanta, GA"
+/* ---------- reading a DraftKings slip ---------- */
 
-/* A total ("Over 54.5") carries no team name. The slip usually prints the
-   venue right after it, so borrow the city rather than discarding it. */
-function venueCity(line) {
-  const m = line.match(VENUE_LINE);
-  return m ? m[1].trim() : "";
+/* The slip screenshot, read top to bottom by iOS Live Text, comes out as a
+   header, a summary line, then one block per leg. The blocks are what matter:
+   the summary drops the subject of a prop the same way it drops the teams off
+   a total, so "Over 3.5" there could be anybody. Underneath, the leg says
+   "Mike Evans Receptions O/U" and the ambiguity is gone. */
+const DK_PLAIN_MARKET = /^(spread|total|totals|moneyline|money line)$/i;
+const DK_OU_MARKET = /^(.+?)\s*o\/u$/i;                 // "Mike Evans Receptions O/U"
+const DK_SCORER = /^anytime (td|touchdown) scorer$/i;
+const DK_ODDS = /^[+-]\d{3,}$/;                          // +3054, -110
+const DK_MONEY = /^\$\s?([\d,]+(?:\.\d{2})?)$/;
+const DK_OVER_UNDER = /^(over|under)\b/i;
+
+function isDkMarket(t) {
+  return DK_PLAIN_MARKET.test(t) || DK_OU_MARKET.test(t) || DK_SCORER.test(t);
 }
 
-function parsePastedPicks(text) {
+/* Everything worth having off one slip: the five legs, the price, the stake
+   and what it paid. Results are not in here on purpose. The check marks are
+   icons, and an icon does not survive Live Text. */
+function parseSlip(text) {
+  const lines = String(text || "").split(/\r?\n/).map(t => cleanPickLine(t)).filter(Boolean);
+  const hasBlocks = lines.some(isDkMarket);
+  if (!hasBlocks) return { picks: parseLoosePicks(text), odds: "", wager: 0, payout: 0, dk: false };
+
+  /* The header runs out one line before the first market label, because that
+     line is the first leg's pick rather than part of the header. */
+  const firstMarket = Math.max(0, lines.findIndex(isDkMarket) - 1);
+  const picks = [];
+  let odds = "", wager = 0, payout = 0, moneyLabel = "";
+
+  lines.forEach((t, i) => {
+    /* Above the first leg sits the header: the price, the stake, the payout,
+       and the summary line that cannot be trusted. */
+    if (i < firstMarket) {
+      if (DK_ODDS.test(t)) { odds = t; return; }          // a boost overwrites the original
+      if (/^wager$/i.test(t.replace(/:$/, ""))) { moneyLabel = "wager"; return; }
+      if (/^paid$/i.test(t.replace(/:$/, ""))) { moneyLabel = "paid"; return; }
+      const m = t.match(DK_MONEY);
+      if (m) {
+        const v = Number(m[1].replace(/,/g, ""));
+        if (moneyLabel === "paid") payout = v; else if (moneyLabel === "wager") wager = v;
+        moneyLabel = "";
+        return;
+      }
+      const w = t.match(/^wager:?\s*\$\s?([\d,.]+)/i);
+      if (w) { wager = Number(w[1].replace(/,/g, "")); return; }
+      const pd = t.match(/^paid:?\s*\$\s?([\d,.]+)/i);
+      if (pd) { payout = Number(pd[1].replace(/,/g, "")); return; }
+      return;                                             // summary line and branding
+    }
+
+    if (DK_ODDS.test(t)) return;                          // each leg prints its own price
+    if (!/[a-z]/i.test(t)) return;                        // progress numbers off the bars
+    if (PASTE_NOISE.test(t) && !isDkMarket(t)) return;
+
+    const city = venueCity(t);
+    if (city) {
+      const last = picks[picks.length - 1];
+      if (last && DK_OVER_UNDER.test(last) && !/\(/.test(last)) {
+        picks[picks.length - 1] = last + " (" + city + ")";
+      }
+      return;
+    }
+
+    /* A market line describes the pick above it rather than being one. */
+    if (isDkMarket(t)) {
+      const last = picks.length - 1;
+      if (last < 0) return;
+      if (DK_SCORER.test(t)) { picks[last] = picks[last] + " Anytime TD"; return; }
+      const ou = t.match(DK_OU_MARKET);
+      if (ou && DK_OVER_UNDER.test(picks[last])) {
+        picks[last] = ou[1].trim() + " " + picks[last];    // "Mike Evans Receptions Over 3.5"
+      }
+      return;                                              // Spread and Total say nothing new
+    }
+
+    picks.push(t);
+  });
+
+  return { picks, odds, wager, payout, dk: true };
+}
+
+/* Anything that is not a DraftKings slip: keep the lines that look like picks
+   and drop the labels, the prices and the places. */
+function parseLoosePicks(text) {
   if (!text) return [];
   let parts = text.split(/\r?\n/).map(t => t.trim()).filter(Boolean);
   if (parts.length < 2) parts = text.split(",").map(t => t.trim()).filter(Boolean);
@@ -560,7 +637,7 @@ function parsePastedPicks(text) {
     const city = venueCity(t);
     if (city) {
       const last = out[out.length - 1];
-      if (last && /^(over|under)\b/i.test(last) && !/\(/.test(last)) {
+      if (last && DK_OVER_UNDER.test(last) && !/\(/.test(last)) {
         out[out.length - 1] = last + " (" + city + ")";
       }
       return;
@@ -574,6 +651,19 @@ function parsePastedPicks(text) {
   return out;
 }
 
+const VENUE_LINE = /^@?\s*([A-Za-z .'&-]+),\s*[A-Z]{2}\.?$/;   // "Atlanta, GA" or "@ Atlanta, GA"
+
+/* A total ("Over 54.5") carries no team name. The slip usually prints the
+   venue right after it, so borrow the city rather than discarding it. */
+function venueCity(line) {
+  const m = line.match(VENUE_LINE);
+  return m ? m[1].trim() : "";
+}
+
+function parsePastedPicks(text) {
+  return parseSlip(text).picks;
+}
+
 function cleanPickLine(t) {
   return t
     .replace(/^[•*]+\s*/, "")          // bullets
@@ -581,6 +671,67 @@ function cleanPickLine(t) {
     .replace(/\s+/g, " ")
     .replace(/([+-])\s+(?=[\d.])/g, "$1")   // "Pittsburgh - 16.5" -> "Pittsburgh -16.5"
     .trim();
+}
+
+/* ---------- filling in what the slip leaves out ---------- */
+
+/* A total prints its venue and not its teams, which is the one thing the slip
+   will not tell you. ESPN's public scoreboard knows which game was in that
+   city that day. No key, and it answers CORS, so the page can ask directly. */
+const ESPN_PATH = { cfb: "college-football", nfl: "nfl" };
+const SCORE_CACHE = {};
+
+async function espnGames(dateIso, league) {
+  const path = ESPN_PATH[league] || ESPN_PATH.cfb;
+  const d = String(dateIso || "").replace(/-/g, "");
+  if (!/^\d{8}$/.test(d)) return [];
+  const key = path + d;
+  if (SCORE_CACHE[key]) return SCORE_CACHE[key];
+
+  const url = "https://site.api.espn.com/apis/site/v2/sports/football/" + path +
+              "/scoreboard?dates=" + d +
+              (path === "college-football" ? "&groups=80&limit=200" : "");
+  const res = await fetch(url);
+  if (!res.ok) throw new Error("scores " + res.status);
+  const j = await res.json();
+
+  const games = (j.events || []).map(e => {
+    const c = (e.competitions || [])[0] || {};
+    const at = (c.venue || {}).address || {};
+    const sides = (c.competitors || []).map(t => ({
+      name: (t.team || {}).shortDisplayName || (t.team || {}).displayName || "",
+      score: Number(t.score || 0)
+    }));
+    return {
+      city: at.city || "",
+      teams: sides.map(s => s.name).filter(Boolean),
+      total: sides.reduce((n, x) => n + x.score, 0),
+      final: !!(((c.status || {}).type || {}).completed)
+    };
+  });
+  SCORE_CACHE[key] = games;
+  return games;
+}
+
+/* "Under 59.5 (Atlanta)" becomes "Tennessee/Syracuse Under 59.5", so the leg
+   reads like every other one. A city nobody played in that day is left alone
+   rather than guessed at. */
+async function nameVenueTotals(picks, dateIso, league) {
+  const list = (picks || []).slice();
+  if (!list.some(p => /\([^)]+\)\s*$/.test(p))) return list;
+
+  let games = [];
+  try { games = await espnGames(dateIso, league); } catch (e) { return list; }
+  if (!games.length) return list;
+
+  return list.map(p => {
+    const m = p.match(/^(.*?)\s*\(([^)]+)\)\s*$/);
+    if (!m) return p;
+    const city = m[2].trim().toLowerCase();
+    const g = games.find(x => x.city && x.city.toLowerCase() === city);
+    if (!g || g.teams.length !== 2) return p;
+    return g.teams.join("/") + " " + m[1].trim();
+  });
 }
 
 /* ---------- assigning picks to people ---------- */
