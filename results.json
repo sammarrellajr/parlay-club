@@ -133,8 +133,6 @@
       "id": "2026-09-13-nfl",
       "date": "2026-09-10",
       "league": "nfl",
-      "label": "Thu 9/10 NFL",
-      "odds": "+2200",
       "picks": {
         "Drew": {
           "result": "W",
@@ -155,6 +153,38 @@
         "Tyler": {
           "result": "W",
           "pick": "K. Williams TD"
+        }
+      },
+      "odds": "+2200",
+      "payout": 0,
+      "label": "Thu 9/10 NFL"
+    },
+    {
+      "id": "2026-09-12-cfb",
+      "date": "2026-09-12",
+      "league": "cfb",
+      "label": "Sat 9/12 College",
+      "odds": "",
+      "picks": {
+        "Drew": {
+          "result": "P",
+          "pick": "Utah -7.5"
+        },
+        "Pat": {
+          "result": "P",
+          "pick": "Texas A&M -14.5"
+        },
+        "Sam": {
+          "result": "P",
+          "pick": "Oklahoma -4.5"
+        },
+        "Tim": {
+          "result": "P",
+          "pick": ""
+        },
+        "Tyler": {
+          "result": "P",
+          "pick": "Syracuse -4.5"
         }
       },
       "payout": 0
