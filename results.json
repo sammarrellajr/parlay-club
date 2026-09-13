@@ -163,8 +163,6 @@
       "id": "2026-09-12-cfb",
       "date": "2026-09-12",
       "league": "cfb",
-      "label": "Sat 9/12 College",
-      "odds": "2526",
       "picks": {
         "Drew": {
           "result": "W",
@@ -185,6 +183,38 @@
         "Tyler": {
           "result": "L",
           "pick": "Syracuse -4.5"
+        }
+      },
+      "odds": "2526",
+      "payout": 0,
+      "label": "Sat 9/12 College"
+    },
+    {
+      "id": "2026-09-13-nfl#2",
+      "date": "2026-09-13",
+      "league": "nfl",
+      "label": "Sun 9/13 NFL",
+      "odds": "",
+      "picks": {
+        "Drew": {
+          "result": "P",
+          "pick": ""
+        },
+        "Pat": {
+          "result": "P",
+          "pick": "D. Smith TD"
+        },
+        "Sam": {
+          "result": "P",
+          "pick": "D. Montgomery TD"
+        },
+        "Tim": {
+          "result": "P",
+          "pick": ""
+        },
+        "Tyler": {
+          "result": "P",
+          "pick": ""
         }
       },
       "payout": 0
