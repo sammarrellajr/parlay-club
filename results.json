@@ -193,8 +193,6 @@
       "id": "2026-09-13-nfl#2",
       "date": "2026-09-13",
       "league": "nfl",
-      "label": "Sun 9/13 NFL",
-      "odds": "",
       "picks": {
         "Drew": {
           "result": "L",
@@ -215,6 +213,38 @@
         "Tyler": {
           "result": "W",
           "pick": "Chase Brown TD"
+        }
+      },
+      "odds": "",
+      "payout": 0,
+      "label": "Sun 9/13 NFL"
+    },
+    {
+      "id": "2026-09-19-cfb",
+      "date": "2026-09-19",
+      "league": "cfb",
+      "label": "Sat 9/19 College",
+      "odds": "",
+      "picks": {
+        "Drew": {
+          "result": "P",
+          "pick": ""
+        },
+        "Pat": {
+          "result": "P",
+          "pick": "Louisville -2.5"
+        },
+        "Sam": {
+          "result": "P",
+          "pick": "Clemson -3"
+        },
+        "Tim": {
+          "result": "P",
+          "pick": "SMU/Louisville Over 58.5"
+        },
+        "Tyler": {
+          "result": "P",
+          "pick": "Miss State/USC Over 58.5"
         }
       },
       "payout": 0
