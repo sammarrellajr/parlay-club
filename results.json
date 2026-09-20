@@ -253,8 +253,6 @@
       "id": "2026-09-20-nfl",
       "date": "2026-09-20",
       "league": "nfl",
-      "label": "Sun 9/20 NFL",
-      "odds": "+1700",
       "picks": {
         "Drew": {
           "result": "P",
@@ -275,6 +273,38 @@
         "Tyler": {
           "result": "P",
           "pick": "J. Jefferson Over Rec."
+        }
+      },
+      "odds": "+1700",
+      "payout": 0,
+      "label": "Sun 9/20 NFL"
+    },
+    {
+      "id": "2026-09-20-nfl#2",
+      "date": "2026-09-20",
+      "league": "nfl",
+      "label": "Sun 9/20 NFL #2",
+      "odds": "+1400",
+      "picks": {
+        "Drew": {
+          "result": "P",
+          "pick": "S. Barkley Over 1.5 Rec"
+        },
+        "Pat": {
+          "result": "P",
+          "pick": "D. Smith Over Rec"
+        },
+        "Sam": {
+          "result": "P",
+          "pick": "J. Hurts Over Rush"
+        },
+        "Tim": {
+          "result": "P",
+          "pick": "Saquon Over 80.5 Rush"
+        },
+        "Tyler": {
+          "result": "P",
+          "pick": "Eagles Over 23.5 Team Points"
         }
       },
       "payout": 0
