@@ -223,8 +223,6 @@
       "id": "2026-09-19-cfb",
       "date": "2026-09-19",
       "league": "cfb",
-      "label": "Sat 9/19 College",
-      "odds": "2828",
       "picks": {
         "Drew": {
           "result": "L",
@@ -245,6 +243,38 @@
         "Tyler": {
           "result": "W",
           "pick": "Miss State/USC Over 58.5"
+        }
+      },
+      "odds": "2828",
+      "payout": 0,
+      "label": "Sat 9/19 College"
+    },
+    {
+      "id": "2026-09-20-nfl",
+      "date": "2026-09-20",
+      "league": "nfl",
+      "label": "Sun 9/20 NFL",
+      "odds": "",
+      "picks": {
+        "Drew": {
+          "result": "P",
+          "pick": "Vikings/Bears Over 47.5"
+        },
+        "Pat": {
+          "result": "P",
+          "pick": "S. Barkley TD"
+        },
+        "Sam": {
+          "result": "P",
+          "pick": "Bucs -7.5"
+        },
+        "Tim": {
+          "result": "P",
+          "pick": "Seahawks -4.5"
+        },
+        "Tyler": {
+          "result": "P",
+          "pick": "J. Jefferson Over Rec."
         }
       },
       "payout": 0
