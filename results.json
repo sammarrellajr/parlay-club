@@ -253,6 +253,8 @@
       "id": "2026-09-20-nfl",
       "date": "2026-09-20",
       "league": "nfl",
+      "label": "Sun 9/20 NFL #2",
+      "odds": "+1700",
       "picks": {
         "Drew": {
           "result": "L",
@@ -267,7 +269,7 @@
           "pick": "Bucs -7.5"
         },
         "Tim": {
-          "result": "L",
+          "result": "W",
           "pick": "Seahawks -4.5"
         },
         "Tyler": {
@@ -275,16 +277,12 @@
           "pick": "J. Jefferson Over Rec."
         }
       },
-      "odds": "+1700",
-      "payout": 0,
-      "label": "Sun 9/20 NFL #2"
+      "payout": 0
     },
     {
       "id": "2026-09-20-nfl#2",
       "date": "2026-09-20",
       "league": "nfl",
-      "label": "Sun 9/20 NFL #2",
-      "odds": "+1400",
       "picks": {
         "Drew": {
           "result": "L",
@@ -307,7 +305,9 @@
           "pick": "Eagles Over 23.5 Team Points"
         }
       },
-      "payout": 0
+      "odds": "+1400",
+      "payout": 0,
+      "label": "Sun 9/20 NFL #2"
     }
   ]
 }
