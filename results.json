@@ -253,8 +253,6 @@
       "id": "2026-09-20-nfl",
       "date": "2026-09-20",
       "league": "nfl",
-      "label": "Sun 9/20 NFL #2",
-      "odds": "+1700",
       "picks": {
         "Drew": {
           "result": "L",
@@ -277,7 +275,9 @@
           "pick": "J. Jefferson Over Rec."
         }
       },
-      "payout": 0
+      "odds": "+1700",
+      "payout": 0,
+      "label": "Sun 9/20 NFL #2"
     },
     {
       "id": "2026-09-20-nfl#2",
@@ -308,6 +308,36 @@
       "odds": "+1400",
       "payout": 0,
       "label": "Sun 9/20 NFL #2"
+    },
+    {
+      "id": "2026-09-26-cfb",
+      "date": "2026-09-26",
+      "league": "cfb",
+      "label": "Sat 9/26 College",
+      "odds": "2324",
+      "picks": {
+        "Drew": {
+          "result": "P",
+          "pick": "Penn State -9.5"
+        },
+        "Pat": {
+          "result": "P",
+          "pick": "Purdue +27.5"
+        },
+        "Sam": {
+          "result": "P",
+          "pick": "Florida -3.5"
+        },
+        "Tim": {
+          "result": "P",
+          "pick": "Utah -7.5"
+        },
+        "Tyler": {
+          "result": "P",
+          "pick": "Oregon/USC Over 61.5"
+        }
+      },
+      "payout": 0
     }
   ]
 }
