@@ -317,23 +317,23 @@
       "odds": "2324",
       "picks": {
         "Drew": {
-          "result": "P",
+          "result": "L",
           "pick": "Penn State -9.5"
         },
         "Pat": {
-          "result": "P",
+          "result": "L",
           "pick": "Purdue +27.5"
         },
         "Sam": {
-          "result": "P",
+          "result": "W",
           "pick": "Florida -3.5"
         },
         "Tim": {
-          "result": "P",
+          "result": "W",
           "pick": "Utah -7.5"
         },
         "Tyler": {
-          "result": "P",
+          "result": "W",
           "pick": "Oregon/USC Over 61.5"
         }
       },
