@@ -313,8 +313,6 @@
       "id": "2026-09-26-cfb",
       "date": "2026-09-26",
       "league": "cfb",
-      "label": "Sat 9/26 College",
-      "odds": "2324",
       "picks": {
         "Drew": {
           "result": "L",
@@ -335,6 +333,38 @@
         "Tyler": {
           "result": "W",
           "pick": "Oregon/USC Over 61.5"
+        }
+      },
+      "odds": "2324",
+      "payout": 0,
+      "label": "Sat 9/26 College"
+    },
+    {
+      "id": "2026-09-27-nfl",
+      "date": "2026-09-27",
+      "league": "nfl",
+      "label": "Sun 9/27 NFL",
+      "odds": "",
+      "picks": {
+        "Drew": {
+          "result": "P",
+          "pick": ""
+        },
+        "Pat": {
+          "result": "P",
+          "pick": ""
+        },
+        "Sam": {
+          "result": "P",
+          "pick": "McConkey Over Rec"
+        },
+        "Tim": {
+          "result": "P",
+          "pick": ""
+        },
+        "Tyler": {
+          "result": "P",
+          "pick": ""
         }
       },
       "payout": 0
