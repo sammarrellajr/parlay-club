@@ -343,8 +343,6 @@
       "id": "2026-09-27-nfl",
       "date": "2026-09-27",
       "league": "nfl",
-      "label": "Sun 9/27 NFL",
-      "odds": "+2471",
       "picks": {
         "Drew": {
           "result": "L",
@@ -365,6 +363,38 @@
         "Tyler": {
           "result": "W",
           "pick": "L. Jackson Over 40.5 Rushing"
+        }
+      },
+      "odds": "+2471",
+      "payout": 0,
+      "label": "Sun 9/27 NFL"
+    },
+    {
+      "id": "2026-09-27-nfl#2",
+      "date": "2026-09-27",
+      "league": "nfl",
+      "label": "Sun 9/27 NFL #2",
+      "odds": "",
+      "picks": {
+        "Drew": {
+          "result": "P",
+          "pick": ""
+        },
+        "Pat": {
+          "result": "P",
+          "pick": ""
+        },
+        "Sam": {
+          "result": "P",
+          "pick": "S. Barkley TD"
+        },
+        "Tim": {
+          "result": "P",
+          "pick": ""
+        },
+        "Tyler": {
+          "result": "P",
+          "pick": ""
         }
       },
       "payout": 0
