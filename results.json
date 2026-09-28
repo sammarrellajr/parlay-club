@@ -344,27 +344,27 @@
       "date": "2026-09-27",
       "league": "nfl",
       "label": "Sun 9/27 NFL",
-      "odds": "",
+      "odds": "+2471",
       "picks": {
         "Drew": {
-          "result": "P",
-          "pick": ""
+          "result": "L",
+          "pick": "B. Mayfield Over 16.5 Rush"
         },
         "Pat": {
-          "result": "P",
-          "pick": ""
+          "result": "L",
+          "pick": "Chase Brown TD"
         },
         "Sam": {
-          "result": "P",
-          "pick": "McConkey Over 54.5 Rec"
+          "result": "W",
+          "pick": "L. McConkey Over 54.5 Rec"
         },
         "Tim": {
-          "result": "P",
-          "pick": ""
+          "result": "L",
+          "pick": "Seahawks -8.5"
         },
         "Tyler": {
-          "result": "P",
-          "pick": ""
+          "result": "W",
+          "pick": "L. Jackson Over 40.5 Rushing"
         }
       },
       "payout": 0
