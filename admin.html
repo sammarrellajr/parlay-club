@@ -1,4 +1,4 @@
-<!doctype html>
+><!doctype html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -133,6 +133,13 @@ details.ebox .esum.blank { color: #414b5c; font-weight: 500; }
 .slateline input[type="date"] {
   min-height: 36px; margin: 0; padding: 0 9px;
   text-align: center; font-size: 13.5px; font-weight: 650;
+}
+
+/* One line for a name, because the date alone cannot tell a Monday nighter
+   from the Sunday slate it followed. */
+.nameline {
+  min-height: 34px; margin: 8px 0 0; padding: 0 11px;
+  font-size: 13.5px; font-weight: 600;
 }
 
 .oddsrow {
@@ -312,6 +319,9 @@ details.fold.quiet[open] > summary { color: var(--muted); margin-bottom: 4px; }
           </div>
           <input type="date" id="date">
         </div>
+        <input type="text" id="note" class="nameline"
+          placeholder="Name it (optional) - MNF, bonus, second slip"
+          autocomplete="off" spellcheck="false">
         <div class="hint" id="dateHint"></div>
 
         <div id="entries" style="margin-top:12px"></div>
@@ -403,9 +413,6 @@ let STATE = { owner: "", repo: "", branch: "main", token: "" };
 let DATA = null;
 let SHA = null;
 let EDITING = null;
-/* Any name an older slate was given. Not editable here any more, but kept so
-   a save does not quietly strip it. */
-let NOTE = "";
 let LG = "cfb";
 let dateTouched = false;
 
@@ -593,8 +600,16 @@ function setLeague(key, snapDate) {
 /* The football week runs Thursday to Monday, so Thursday and Friday belong to
    the weekend coming up, not the one just played. Anchor on that Saturday and
    put NFL on the Sunday after it. */
+/* Most slates are the Saturday or the Sunday, but not all of them: there is a
+   Thursday and a Monday night game every NFL week, and college plays Friday.
+   When today is itself a game day for the league, today is the better guess
+   than snapping back to the weekend. */
+const GAME_DAYS = { nfl: [0, 1, 4], cfb: [5, 6] };   // Sun/Mon/Thu, Fri/Sat
+
 function defaultDateFor(key) {
-  const sat = parseISO(weekendKey(iso(new Date())));
+  const today = new Date();
+  if ((GAME_DAYS[key] || []).includes(today.getDay())) return iso(today);
+  const sat = parseISO(weekendKey(iso(today)));
   if (!sat) return "";
   if (key === "nfl") sat.setDate(sat.getDate() + 1);
   return iso(sat);
@@ -959,7 +974,8 @@ $("save").addEventListener("click", async () => {
     DATA = await fetchFile(); // refresh so we never clobber a newer save
     const id = EDITING || nextIdFor(date, LG);
     const odds = $("odds").value.trim();
-    const label = entryLabel(date, LG) + suffixFor(date, LG) + (NOTE ? " \u00b7 " + NOTE : "");
+    const note = $("note").value.trim();
+    const label = entryLabel(date, LG) + suffixFor(date, LG) + (note ? " \u00b7 " + note : "");
     const entry = { id, date, league: LG, label, odds, picks, payout };
     const i = DATA.entries.findIndex(e => e.id === id);
     if (i >= 0) DATA.entries[i] = entry; else DATA.entries.push(entry);
@@ -989,7 +1005,7 @@ function resetForm() {
   $("editorTitle").textContent = "New parlay";
   syncSecondary();
   $("save").textContent = "Save entry";
-  NOTE = "";
+  $("note").value = "";
   $("odds").value = "";
   defaultLeagueAndDate();
   buildForm();
@@ -1189,7 +1205,7 @@ function editEntry(id) {
   $("odds").value = e.odds || "";
   /* Slates are not named here any more, but the ones that already carry a name
      keep it: it rides along in the label rather than getting wiped on save. */
-  NOTE = String(e.label || "").split(" \u00b7 ").slice(1).join(" \u00b7 ");
+  $("note").value = String(e.label || "").split(" \u00b7 ").slice(1).join(" \u00b7 ");
   $("editorTitle").textContent = "Editing " + e.label;
   syncSecondary();
   $("save").textContent = "Update entry";
