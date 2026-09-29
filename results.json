@@ -373,11 +373,11 @@
       "id": "2026-09-27-nfl#2",
       "date": "2026-09-27",
       "league": "nfl",
-      "label": "Sun 9/27 NFL #2",
+      "label": "Sun 9/27 NFL #2 · Mon 9/28 NFL #2",
       "odds": "+2600",
       "picks": {
         "Drew": {
-          "result": "P",
+          "result": "L",
           "pick": "Bears Team Under 19.5"
         },
         "Pat": {
@@ -385,15 +385,15 @@
           "pick": "J. Hurts Anytime TD"
         },
         "Sam": {
-          "result": "P",
+          "result": "L",
           "pick": "S. Barkley TD"
         },
         "Tim": {
-          "result": "P",
+          "result": "W",
           "pick": "D. Smith Over 5.5 Catches"
         },
         "Tyler": {
-          "result": "P",
+          "result": "L",
           "pick": "T. Bisbgy Over 11.5 Rush"
         }
       },
