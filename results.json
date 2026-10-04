@@ -403,8 +403,6 @@
       "id": "2026-10-03-cfb",
       "date": "2026-10-03",
       "league": "cfb",
-      "label": "Sat 10/3 College",
-      "odds": "+2192",
       "picks": {
         "Drew": {
           "result": "W",
@@ -425,6 +423,38 @@
         "Tyler": {
           "result": "W",
           "pick": "JMU -18.5"
+        }
+      },
+      "odds": "+2192",
+      "payout": 0,
+      "label": "Sat 10/3 College"
+    },
+    {
+      "id": "2026-10-04-nfl",
+      "date": "2026-10-04",
+      "league": "nfl",
+      "label": "Sun 10/4 NFL",
+      "odds": "",
+      "picks": {
+        "Drew": {
+          "result": "P",
+          "pick": "Josh Allen Anytime TD"
+        },
+        "Pat": {
+          "result": "P",
+          "pick": ""
+        },
+        "Sam": {
+          "result": "P",
+          "pick": "T. Warren Over 6 Rec"
+        },
+        "Tim": {
+          "result": "P",
+          "pick": ""
+        },
+        "Tyler": {
+          "result": "P",
+          "pick": ""
         }
       },
       "payout": 0
