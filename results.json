@@ -373,8 +373,6 @@
       "id": "2026-09-27-nfl#2",
       "date": "2026-09-27",
       "league": "nfl",
-      "label": "Sun 9/27 NFL #2 · Mon 9/28 NFL #2",
-      "odds": "+2600",
       "picks": {
         "Drew": {
           "result": "L",
@@ -395,6 +393,38 @@
         "Tyler": {
           "result": "L",
           "pick": "T. Bisbgy Over 11.5 Rush"
+        }
+      },
+      "odds": "+2600",
+      "payout": 0,
+      "label": "Sun 9/27 NFL #2 · Mon 9/28 NFL #2"
+    },
+    {
+      "id": "2026-10-03-cfb",
+      "date": "2026-10-03",
+      "league": "cfb",
+      "label": "Sat 10/3 College",
+      "odds": "+2192",
+      "picks": {
+        "Drew": {
+          "result": "W",
+          "pick": "BYU -5.5"
+        },
+        "Pat": {
+          "result": "L",
+          "pick": "South Carolina -2.5"
+        },
+        "Sam": {
+          "result": "W",
+          "pick": "Miami -15"
+        },
+        "Tim": {
+          "result": "L",
+          "pick": "Florida -4.5"
+        },
+        "Tyler": {
+          "result": "W",
+          "pick": "JMU -18.5"
         }
       },
       "payout": 0
