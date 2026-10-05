@@ -434,27 +434,27 @@
       "date": "2026-10-04",
       "league": "nfl",
       "label": "Sun 10/4 NFL",
-      "odds": "",
+      "odds": "+1795",
       "picks": {
         "Drew": {
-          "result": "P",
-          "pick": "Josh Allen Anytime TD"
+          "result": "W",
+          "pick": "J. Allen Anytime TD"
         },
         "Pat": {
-          "result": "P",
-          "pick": ""
+          "result": "L",
+          "pick": "J. Addison Anytime TD"
         },
         "Sam": {
-          "result": "P",
+          "result": "L",
           "pick": "T. Warren Over 6 Rec"
         },
         "Tim": {
-          "result": "P",
-          "pick": ""
+          "result": "W",
+          "pick": "P. Mahomes Over 1.5 TDs"
         },
         "Tyler": {
-          "result": "P",
-          "pick": ""
+          "result": "L",
+          "pick": "J. Smith-Njigba Over 6.5"
         }
       },
       "payout": 0
