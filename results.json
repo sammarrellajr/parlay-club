@@ -433,8 +433,6 @@
       "id": "2026-10-04-nfl",
       "date": "2026-10-04",
       "league": "nfl",
-      "label": "Sun 10/4 NFL",
-      "odds": "+1795",
       "picks": {
         "Drew": {
           "result": "W",
@@ -455,6 +453,38 @@
         "Tyler": {
           "result": "L",
           "pick": "J. Smith-Njigba Over 6.5"
+        }
+      },
+      "odds": "+1795",
+      "payout": 0,
+      "label": "Sun 10/4 NFL"
+    },
+    {
+      "id": "2026-10-10-cfb",
+      "date": "2026-10-10",
+      "league": "cfb",
+      "label": "Sat 10/10 College",
+      "odds": "",
+      "picks": {
+        "Drew": {
+          "result": "P",
+          "pick": ""
+        },
+        "Pat": {
+          "result": "P",
+          "pick": "Ole Miss -8.5"
+        },
+        "Sam": {
+          "result": "P",
+          "pick": "Penn State -1.5"
+        },
+        "Tim": {
+          "result": "P",
+          "pick": "UCLA/Oregon Over 58.5"
+        },
+        "Tyler": {
+          "result": "P",
+          "pick": "Duke -6.5"
         }
       },
       "payout": 0
