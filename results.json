@@ -463,8 +463,6 @@
       "id": "2026-10-10-cfb",
       "date": "2026-10-10",
       "league": "cfb",
-      "label": "Sat 10/10 College",
-      "odds": "+2159",
       "picks": {
         "Drew": {
           "result": "W",
@@ -485,6 +483,38 @@
         "Tyler": {
           "result": "L",
           "pick": "Duke -6.5"
+        }
+      },
+      "odds": "+2159",
+      "payout": 0,
+      "label": "Sat 10/10 College"
+    },
+    {
+      "id": "2026-10-11-nfl",
+      "date": "2026-10-11",
+      "league": "nfl",
+      "label": "Sun 10/11 NFL",
+      "odds": "+2000",
+      "picks": {
+        "Drew": {
+          "result": "L",
+          "pick": "J. Taylor Anytimr TD"
+        },
+        "Pat": {
+          "result": "W",
+          "pick": "J. Chase Anytime TD"
+        },
+        "Sam": {
+          "result": "L",
+          "pick": "A. St. Brown Over Rec"
+        },
+        "Tim": {
+          "result": "L",
+          "pick": "R. Doubs Over Rec Yards"
+        },
+        "Tyler": {
+          "result": "W",
+          "pick": "J. Gibbs Over Rush + Rec"
         }
       },
       "payout": 0
