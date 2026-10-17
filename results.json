@@ -493,8 +493,6 @@
       "id": "2026-10-11-nfl",
       "date": "2026-10-11",
       "league": "nfl",
-      "label": "Sun 10/11 NFL",
-      "odds": "+2000",
       "picks": {
         "Drew": {
           "result": "L",
@@ -515,6 +513,38 @@
         "Tyler": {
           "result": "W",
           "pick": "J. Gibbs Over Rush + Rec"
+        }
+      },
+      "odds": "+2000",
+      "payout": 0,
+      "label": "Sun 10/11 NFL"
+    },
+    {
+      "id": "2026-10-17-cfb",
+      "date": "2026-10-17",
+      "league": "cfb",
+      "label": "Sat 10/17 College",
+      "odds": "",
+      "picks": {
+        "Drew": {
+          "result": "P",
+          "pick": ""
+        },
+        "Pat": {
+          "result": "P",
+          "pick": ""
+        },
+        "Sam": {
+          "result": "P",
+          "pick": "Ohio State -3"
+        },
+        "Tim": {
+          "result": "P",
+          "pick": "Texas Tech/ASU Over 50.5"
+        },
+        "Tyler": {
+          "result": "P",
+          "pick": ""
         }
       },
       "payout": 0
