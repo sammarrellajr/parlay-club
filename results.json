@@ -524,7 +524,7 @@
       "date": "2026-10-17",
       "league": "cfb",
       "label": "Sat 10/17 College",
-      "odds": "",
+      "odds": "+2459",
       "picks": {
         "Drew": {
           "result": "P",
@@ -539,11 +539,11 @@
           "pick": "Ohio State -3"
         },
         "Tim": {
-          "result": "P",
+          "result": "W",
           "pick": "Texas Tech/ASU Over 50.5"
         },
         "Tyler": {
-          "result": "P",
+          "result": "W",
           "pick": "Ole Miss -5.5"
         }
       },
