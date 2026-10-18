@@ -523,8 +523,6 @@
       "id": "2026-10-17-cfb",
       "date": "2026-10-17",
       "league": "cfb",
-      "label": "Sat 10/17 College",
-      "odds": "+2459",
       "picks": {
         "Drew": {
           "result": "W",
@@ -547,7 +545,39 @@
           "pick": "Ole Miss -5.5"
         }
       },
-      "payout": 127.95
+      "odds": "+2459",
+      "payout": 127.95,
+      "label": "Sat 10/17 College"
+    },
+    {
+      "id": "2026-10-18-nfl",
+      "date": "2026-10-18",
+      "league": "nfl",
+      "label": "Sun 10/18 NFL",
+      "odds": "",
+      "picks": {
+        "Drew": {
+          "result": "P",
+          "pick": "Rams/Cardnials Over 51.5"
+        },
+        "Pat": {
+          "result": "P",
+          "pick": "D. Smith Over 56.5 Rec Yards"
+        },
+        "Sam": {
+          "result": "P",
+          "pick": "M. Golden Over 66 Rec Yards"
+        },
+        "Tim": {
+          "result": "P",
+          "pick": "D. Henry Over 89.5 Rush Yards"
+        },
+        "Tyler": {
+          "result": "P",
+          "pick": "Jaylen Warren Over 93.5 Rush+Rec Yards"
+        }
+      },
+      "payout": 0
     }
   ]
 }
