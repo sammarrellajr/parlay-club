@@ -527,7 +527,7 @@
       "odds": "+2459",
       "picks": {
         "Drew": {
-          "result": "P",
+          "result": "W",
           "pick": "Kentucky +6.5"
         },
         "Pat": {
@@ -547,7 +547,7 @@
           "pick": "Ole Miss -5.5"
         }
       },
-      "payout": 0
+      "payout": 127.95
     }
   ]
 }
