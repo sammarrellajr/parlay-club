@@ -557,23 +557,23 @@
       "odds": "+2172",
       "picks": {
         "Drew": {
-          "result": "P",
+          "result": "L",
           "pick": "Rams/Cardnials Over 51.5"
         },
         "Pat": {
-          "result": "P",
+          "result": "W",
           "pick": "D. Smith Over 56.5 Rec Yards"
         },
         "Sam": {
-          "result": "P",
+          "result": "W",
           "pick": "M. Golden Over 66 Rec Yards"
         },
         "Tim": {
-          "result": "P",
+          "result": "L",
           "pick": "D. Henry Over 89.5 Rush Yards"
         },
         "Tyler": {
-          "result": "P",
+          "result": "L",
           "pick": "Jaylen Warren Over 93.5 Rush+Rec Yards"
         }
       },
