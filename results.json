@@ -553,8 +553,6 @@
       "id": "2026-10-18-nfl",
       "date": "2026-10-18",
       "league": "nfl",
-      "label": "Sun 10/18 NFL",
-      "odds": "+2172",
       "picks": {
         "Drew": {
           "result": "L",
@@ -575,6 +573,38 @@
         "Tyler": {
           "result": "L",
           "pick": "Jaylen Warren Over 93.5 Rush+Rec Yards"
+        }
+      },
+      "odds": "+2172",
+      "payout": 0,
+      "label": "Sun 10/18 NFL"
+    },
+    {
+      "id": "2026-10-23-cfb",
+      "date": "2026-10-23",
+      "league": "cfb",
+      "label": "Fri 10/23 College",
+      "odds": "",
+      "picks": {
+        "Drew": {
+          "result": "P",
+          "pick": ""
+        },
+        "Pat": {
+          "result": "P",
+          "pick": ""
+        },
+        "Sam": {
+          "result": "P",
+          "pick": "Ole Miss/Texas Over 53.5"
+        },
+        "Tim": {
+          "result": "P",
+          "pick": "Texas Tech/Cincinnati Over 56.5"
+        },
+        "Tyler": {
+          "result": "P",
+          "pick": ""
         }
       },
       "payout": 0
