@@ -583,8 +583,6 @@
       "id": "2026-10-23-cfb",
       "date": "2026-10-23",
       "league": "cfb",
-      "label": "Fri 10/23 College",
-      "odds": "2212",
       "picks": {
         "Drew": {
           "result": "W",
@@ -607,7 +605,39 @@
           "pick": "Colorado State/SDSU Over 59.5"
         }
       },
-      "payout": 115.6
+      "odds": "2212",
+      "payout": 115.6,
+      "label": "Fri 10/23 College"
+    },
+    {
+      "id": "2026-10-25-nfl",
+      "date": "2026-10-25",
+      "league": "nfl",
+      "label": "Sun 10/25 NFL",
+      "odds": "",
+      "picks": {
+        "Drew": {
+          "result": "P",
+          "pick": ""
+        },
+        "Pat": {
+          "result": "P",
+          "pick": ""
+        },
+        "Sam": {
+          "result": "P",
+          "pick": "M. Golden Over 73.5 Rec Yards"
+        },
+        "Tim": {
+          "result": "P",
+          "pick": "Vikings -6.5"
+        },
+        "Tyler": {
+          "result": "P",
+          "pick": "C. McCaffrey Over 5.5 Receptions"
+        }
+      },
+      "payout": 0
     }
   ]
 }
