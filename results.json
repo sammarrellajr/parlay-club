@@ -617,23 +617,23 @@
       "odds": "2234",
       "picks": {
         "Drew": {
-          "result": "P",
+          "result": "W",
           "pick": "Buccaneers/Panthers Over 44.5"
         },
         "Pat": {
-          "result": "P",
+          "result": "W",
           "pick": "Bucky Irving Anytime TD"
         },
         "Sam": {
-          "result": "P",
+          "result": "L",
           "pick": "M. Golden Over 73.5 Rec Yards"
         },
         "Tim": {
-          "result": "P",
+          "result": "L",
           "pick": "Vikings -6.5"
         },
         "Tyler": {
-          "result": "P",
+          "result": "W",
           "pick": "C. McCaffrey Over 5.5 Receptions"
         }
       },
