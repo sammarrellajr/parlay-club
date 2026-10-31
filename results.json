@@ -613,8 +613,6 @@
       "id": "2026-10-25-nfl",
       "date": "2026-10-25",
       "league": "nfl",
-      "label": "Sun 10/25 NFL",
-      "odds": "2234",
       "picks": {
         "Drew": {
           "result": "W",
@@ -635,6 +633,38 @@
         "Tyler": {
           "result": "W",
           "pick": "C. McCaffrey Over 5.5 Receptions"
+        }
+      },
+      "odds": "2234",
+      "payout": 0,
+      "label": "Sun 10/25 NFL"
+    },
+    {
+      "id": "2026-10-31-cfb",
+      "date": "2026-10-31",
+      "league": "cfb",
+      "label": "Sat 10/31 College",
+      "odds": "",
+      "picks": {
+        "Drew": {
+          "result": "P",
+          "pick": "Georgia -11.5"
+        },
+        "Pat": {
+          "result": "P",
+          "pick": "South Carolina +3.5"
+        },
+        "Sam": {
+          "result": "P",
+          "pick": "Ohio St/USC over"
+        },
+        "Tim": {
+          "result": "P",
+          "pick": "Minnesota +20.5"
+        },
+        "Tyler": {
+          "result": "P",
+          "pick": "KState/Colorado over"
         }
       },
       "payout": 0
