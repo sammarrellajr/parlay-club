@@ -647,23 +647,23 @@
       "odds": "+2236",
       "picks": {
         "Drew": {
-          "result": "P",
+          "result": "W",
           "pick": "Georgia -11.5"
         },
         "Pat": {
-          "result": "P",
+          "result": "W",
           "pick": "South Carolina +3.5"
         },
         "Sam": {
-          "result": "P",
+          "result": "L",
           "pick": "Ohio St/USC over"
         },
         "Tim": {
-          "result": "P",
+          "result": "W",
           "pick": "Minnesota +20.5"
         },
         "Tyler": {
-          "result": "P",
+          "result": "W",
           "pick": "KState/Colorado over"
         }
       },
