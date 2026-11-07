@@ -643,8 +643,6 @@
       "id": "2026-10-31-cfb",
       "date": "2026-10-31",
       "league": "cfb",
-      "label": "Sat 10/31 College",
-      "odds": "+2236",
       "picks": {
         "Drew": {
           "result": "W",
@@ -665,6 +663,38 @@
         "Tyler": {
           "result": "W",
           "pick": "KState/Colorado over"
+        }
+      },
+      "odds": "+2236",
+      "payout": 0,
+      "label": "Sat 10/31 College"
+    },
+    {
+      "id": "2026-11-07-cfb",
+      "date": "2026-11-07",
+      "league": "cfb",
+      "label": "Sat 11/7 College",
+      "odds": "",
+      "picks": {
+        "Drew": {
+          "result": "P",
+          "pick": "Georgia -3.5"
+        },
+        "Pat": {
+          "result": "P",
+          "pick": "Houston/Cincinnati Over 60.5"
+        },
+        "Sam": {
+          "result": "P",
+          "pick": "Missouri +3.5"
+        },
+        "Tim": {
+          "result": "P",
+          "pick": "Air Force/Army Under 43.5"
+        },
+        "Tyler": {
+          "result": "P",
+          "pick": "Texas Tech/West Virginia Over 65.5"
         }
       },
       "payout": 0
