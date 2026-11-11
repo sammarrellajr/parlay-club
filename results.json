@@ -673,8 +673,6 @@
       "id": "2026-11-07-cfb",
       "date": "2026-11-07",
       "league": "cfb",
-      "label": "Sat 11/7 College",
-      "odds": "+2033",
       "picks": {
         "Drew": {
           "result": "W",
@@ -695,6 +693,38 @@
         "Tyler": {
           "result": "W",
           "pick": "Texas Tech/West Virginia Over 65.5"
+        }
+      },
+      "odds": "+2033",
+      "payout": 0,
+      "label": "Sat 11/7 College"
+    },
+    {
+      "id": "2026-11-08-nfl",
+      "date": "2026-11-08",
+      "league": "nfl",
+      "label": "Sun 11/8 NFL",
+      "odds": "+1906",
+      "picks": {
+        "Drew": {
+          "result": "L",
+          "pick": "Bengals/Falcons Over 52.5"
+        },
+        "Pat": {
+          "result": "W",
+          "pick": "Jamar Chase Anytime TD"
+        },
+        "Sam": {
+          "result": "L",
+          "pick": "Saints -3"
+        },
+        "Tim": {
+          "result": "L",
+          "pick": "Rashee Rice Over 55.5 Yards Rec"
+        },
+        "Tyler": {
+          "result": "L",
+          "pick": "JSN Over 92.5 Yards Rec"
         }
       },
       "payout": 0
