@@ -677,23 +677,23 @@
       "odds": "+2033",
       "picks": {
         "Drew": {
-          "result": "P",
+          "result": "W",
           "pick": "Georgia -3.5"
         },
         "Pat": {
-          "result": "P",
+          "result": "L",
           "pick": "Houston/Cincinnati Over 60.5"
         },
         "Sam": {
-          "result": "P",
+          "result": "L",
           "pick": "Missouri +3.5"
         },
         "Tim": {
-          "result": "P",
+          "result": "L",
           "pick": "Air Force/Army Under 43.5"
         },
         "Tyler": {
-          "result": "P",
+          "result": "W",
           "pick": "Texas Tech/West Virginia Over 65.5"
         }
       },
