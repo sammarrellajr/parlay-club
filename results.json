@@ -703,8 +703,6 @@
       "id": "2026-11-08-nfl",
       "date": "2026-11-08",
       "league": "nfl",
-      "label": "Sun 11/8 NFL",
-      "odds": "+1906",
       "picks": {
         "Drew": {
           "result": "L",
@@ -725,6 +723,38 @@
         "Tyler": {
           "result": "L",
           "pick": "JSN Over 92.5 Yards Rec"
+        }
+      },
+      "odds": "+1906",
+      "payout": 0,
+      "label": "Sun 11/8 NFL"
+    },
+    {
+      "id": "2026-11-14-cfb",
+      "date": "2026-11-14",
+      "league": "cfb",
+      "label": "Sat 11/14 College",
+      "odds": "",
+      "picks": {
+        "Drew": {
+          "result": "P",
+          "pick": "Wake Forest +1.5"
+        },
+        "Pat": {
+          "result": "P",
+          "pick": "West Virginia -2.5"
+        },
+        "Sam": {
+          "result": "P",
+          "pick": "New Mexico -14"
+        },
+        "Tim": {
+          "result": "P",
+          "pick": "Alabama-14"
+        },
+        "Tyler": {
+          "result": "P",
+          "pick": "Wyoming -7"
         }
       },
       "payout": 0
