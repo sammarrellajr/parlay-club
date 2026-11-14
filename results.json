@@ -737,20 +737,20 @@
       "odds": "",
       "picks": {
         "Drew": {
-          "result": "P",
+          "result": "W",
           "pick": "Wake Forest +1.5"
         },
         "Pat": {
           "result": "P",
-          "pick": "West Virginia -2.5"
+          "pick": "West Virginia"
         },
         "Sam": {
           "result": "P",
-          "pick": "New Mexico -14"
+          "pick": "Georgia -16.5"
         },
         "Tim": {
-          "result": "P",
-          "pick": "Alabama-14"
+          "result": "W",
+          "pick": "Alabama -14"
         },
         "Tyler": {
           "result": "P",
