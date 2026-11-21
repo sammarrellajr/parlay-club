@@ -66,8 +66,46 @@ details.card.fold:not([open]) { padding-bottom: 6px; }
 }
 .lrow.editing { background: #16241c; border-radius: 10px; padding-left: 9px; padding-right: 9px; }
 
-/* The three ways in. Nothing else shares this screen. */
-.hubbtn { min-height: 56px; font-size: 16px; margin-top: 11px; }
+/* The three ways in, each saying what it is for. A hub that lists only verbs
+   makes you open one to remember what is behind it. */
+.hubcard {
+  appearance: none; width: 100%; text-align: left; cursor: pointer;
+  display: flex; align-items: center; gap: 12px;
+  background: var(--panel); border: 1px solid var(--line);
+  border-radius: 14px; padding: 14px 15px; margin-top: 10px;
+  color: var(--text); font-family: inherit;
+  -webkit-tap-highlight-color: transparent;
+}
+.hubcard:active { background: var(--panel-2); }
+.hubcard.primary {
+  border-color: #2f5c42;
+  background: linear-gradient(180deg, #16241c 0%, var(--panel) 75%);
+}
+.hubcard .hc-main { flex: 1; min-width: 0; }
+.hubcard .hc-t { display: block; font-size: 16px; font-weight: 720; letter-spacing: -0.2px; }
+.hubcard.primary .hc-t { color: var(--accent); }
+.hubcard .hc-s { display: block; font-size: 12px; color: var(--muted); margin-top: 2px; }
+.hubcard .hc-r { display: flex; align-items: center; gap: 9px; flex: none; }
+.hubcard .hc-n { font-size: 11px; font-weight: 750; color: var(--dim);
+  font-variant-numeric: tabular-nums; white-space: nowrap; }
+.hubcard .chev { color: var(--dim); font-size: 11px; }
+
+/* Only appears when a leg is actually waiting on someone. */
+.hubstat {
+  display: flex; align-items: center; gap: 9px;
+  border: 1px solid #6b5312;
+  background: linear-gradient(180deg, #241d08 0%, var(--panel-2) 70%);
+  border-radius: 12px; padding: 11px 13px; margin-bottom: 2px;
+}
+.hubstat .hs-tag {
+  font-size: 10px; font-weight: 850; letter-spacing: 0.9px;
+  color: #241a02; background: var(--gold);
+  border-radius: 5px; padding: 3px 7px; flex: none;
+}
+.hubstat .hs-t {
+  font-size: 13px; font-weight: 650; flex: 1; min-width: 0;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
 
 /* Every slate on one tappable line, live ones first. */
 #slateList { margin-top: 4px; }
@@ -288,9 +326,31 @@ details.fold.quiet[open] > summary { color: var(--muted); margin-bottom: 4px; }
 
     <!-- 1. the hub: a choice, not a form -->
     <div id="hub">
-      <button class="btn primary wide hubbtn" id="goNew">New parlay</button>
-      <button class="btn wide hubbtn" id="goEdit">Edit current or prior parlay</button>
-      <button class="btn wide hubbtn" id="goShare">Share</button>
+      <div class="hubstat" id="hubStat" hidden></div>
+
+      <button class="hubcard primary" id="goNew">
+        <span class="hc-main">
+          <span class="hc-t">New parlay</span>
+          <span class="hc-s">Log this week's five</span>
+        </span>
+        <span class="hc-r"><span class="chev">&#9654;</span></span>
+      </button>
+
+      <button class="hubcard" id="goEdit">
+        <span class="hc-main">
+          <span class="hc-t">Edit a parlay</span>
+          <span class="hc-s">Settle results or fix a pick</span>
+        </span>
+        <span class="hc-r"><span class="hc-n" id="hubCount"></span><span class="chev">&#9654;</span></span>
+      </button>
+
+      <button class="hubcard" id="goShare">
+        <span class="hc-main">
+          <span class="hc-t">Share</span>
+          <span class="hc-s">Send the slate or the standings</span>
+        </span>
+        <span class="hc-r"><span class="chev">&#9654;</span></span>
+      </button>
 
       <details class="fold quiet" id="acct">
         <summary>This device</summary>
@@ -557,6 +617,7 @@ async function connect(silent) {
     $("app").style.display = "none";
     return;
   }
+  fillHub();
   localStorage.setItem("pc_repo", JSON.stringify({ owner: STATE.owner, repo: STATE.repo, branch: STATE.branch }));
   localStorage.setItem("pc_token", STATE.token);
   $("setup").style.display = "none";
@@ -1169,6 +1230,28 @@ const VIEWS = { hub: "hub", editor: "editorView", list: "listView", share: "shar
 const TITLES = { hub: "Admin", editor: "Enter results", list: "Edit a parlay", share: "Share" };
 let VIEW = "hub";
 
+/* The hub earns its place by saying what is waiting. An unsettled leg is the
+   only genuinely urgent thing on this screen, so it gets the gold bar. */
+function fillHub() {
+  const count = $("hubCount"), bar = $("hubStat");
+  if (!count || !bar) return;
+  count.textContent = DATA && DATA.entries.length ? DATA.entries.length + " logged" : "";
+  if (!DATA) { bar.hidden = true; return; }
+
+  const unsettled = p => { const r = (p || {}).result; return r !== "W" && r !== "L"; };
+  const open = DATA.entries.filter(e => DATA.players.some(p => unsettled(e.picks[p])));
+  if (!open.length) { bar.hidden = true; return; }
+
+  const legs = open.reduce((t, e) =>
+    t + DATA.players.filter(p => unsettled(e.picks[p])).length, 0);
+  const where = open.length > 1
+    ? "across " + open.length + " slates"
+    : "on " + open[0].label;
+  bar.hidden = false;
+  bar.innerHTML = '<span class="hs-tag">TO SETTLE</span><span class="hs-t">' +
+    esc(legs + " leg" + (legs === 1 ? "" : "s") + " open " + where) + "</span>";
+}
+
 function showView(name) {
   VIEW = name;
   Object.keys(VIEWS).forEach(k => {
@@ -1177,6 +1260,7 @@ function showView(name) {
   $("backBtn").style.display = name === "hub" ? "none" : "inline-flex";
   $("doneLink").style.display = name === "hub" ? "inline-flex" : "none";
   $("hdrTitle").textContent = TITLES[name];
+  if (name === "hub") fillHub();
   window.scrollTo({ top: 0 });
 }
 
