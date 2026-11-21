@@ -185,14 +185,24 @@
 .form i { width: 7px; height: 7px; border-radius: 2px; flex: none; background: var(--panel-hi); }
 .form i.w { background: var(--accent); }
 
-/* ---- History | Stats, so the trends are one tap away instead of three
-       screens down. ---- */
-.btabs { display: grid; grid-template-columns: 1fr 1fr; gap: 2px; background: var(--panel);
-  border: 1px solid var(--line); border-radius: 10px; padding: 2px; margin: 0 0 14px; }
-.btabs button { appearance: none; border: 0; background: transparent; color: var(--muted);
-  font-family: inherit; font-size: 13px; font-weight: 650; padding: 8px 0;
-  border-radius: 8px; cursor: pointer; }
-.btabs button.on { background: var(--panel-hi); color: var(--text); }
+/* ---- Two foldaway sections at the foot of the page. Both start shut, so
+       opening the app answers "who is winning" in one screen instead of
+       scrolling past twenty-six slates to get there. ---- */
+.sect { border-bottom: 1px solid var(--line); }
+.sect > summary {
+  list-style: none; cursor: pointer; display: flex; align-items: baseline;
+  justify-content: space-between; gap: 10px; padding: 15px 0;
+  -webkit-tap-highlight-color: transparent;
+}
+.sect > summary::-webkit-details-marker { display: none; }
+.sect > summary h2 {
+  font-size: 12px; font-weight: 800; letter-spacing: 1.1px; text-transform: uppercase;
+  color: var(--muted); margin: 0;
+}
+.sect > summary h2::after { content: " \25B8"; color: var(--dim); font-size: 10px; }
+.sect[open] > summary h2::after { content: " \25BE"; }
+.sect > summary .note { font-size: 11px; color: var(--dim); }
+.sect > div { padding-bottom: 18px; }
 
 /* ---- Trend bars. One hue; length is the measure; a dashed line at the
        50% break-even does the interpreting. ---- */
@@ -273,20 +283,21 @@
 
   <div class="rule"></div>
 
-  <div class="btabs" id="btabs">
-    <button data-pane="hist" class="on">History</button>
-    <button data-pane="stats">Stats</button>
-  </div>
+  <details class="sect" id="statsSect">
+    <summary>
+      <h2 id="statsTitle">Stats</h2>
+      <span class="note">trends and splits</span>
+    </summary>
+    <div id="statsPane"></div>
+  </details>
 
-  <div id="histPane">
-    <div class="sec-head">
+  <details class="sect" id="histSect">
+    <summary>
       <h2 id="histTitle">History</h2>
       <span class="note" id="histNote"></span>
-    </div>
+    </summary>
     <div id="hist"></div>
-  </div>
-
-  <div id="statsPane" style="display:none"></div>
+  </details>
 
   <p class="foot-note" id="foot"></p>
   <a class="admin-link" href="admin.html">Admin</a>
@@ -344,7 +355,7 @@ async function boot(quiet) {
   STATS = computeStats(DATA);
   $("season").textContent = DATA.season ? DATA.season + " Season" : "";
   render();
-  if (PANE === "stats") renderStats();
+  if ($("statsSect").open) renderStats();
   $("foot").textContent = "Updated " + stamp() + (changed ? " · new results" : "");
 }
 
@@ -888,22 +899,10 @@ function renderStats() {
     '<div class="empty">Not enough logged yet to show a trend.</div>';
 }
 
-/* ---------- the two bottom panes ---------- */
+/* ---------- the two foldaway sections ---------- */
 
-let PANE = "hist";
-
-function showPane(name) {
-  PANE = name;
-  $("histPane").style.display = name === "hist" ? "" : "none";
-  $("statsPane").style.display = name === "stats" ? "" : "none";
-  [...$("btabs").children].forEach(b => b.classList.toggle("on", b.dataset.pane === name));
-  if (name === "stats") renderStats();
-}
-
-$("btabs").addEventListener("click", e => {
-  const b = e.target.closest("button");
-  if (b) showPane(b.dataset.pane);
-});
+/* Nothing is computed until the section is actually opened. */
+$("statsSect").addEventListener("toggle", () => { if ($("statsSect").open) renderStats(); });
 
 $("seg").addEventListener("click", e => {
   const b = e.target.closest("button");
@@ -912,7 +911,7 @@ $("seg").addEventListener("click", e => {
   OPEN = null;
   [...$("seg").children].forEach(c => c.classList.toggle("on", c === b));
   if (STATS) render();
-  if (PANE === "stats") renderStats();
+  if ($("statsSect").open) renderStats();
 });
 
 $("refresh").addEventListener("click", () => boot());
