@@ -733,8 +733,6 @@
       "id": "2026-11-14-cfb",
       "date": "2026-11-14",
       "league": "cfb",
-      "label": "Sat 11/14 College",
-      "odds": "",
       "picks": {
         "Drew": {
           "result": "W",
@@ -755,6 +753,38 @@
         "Tyler": {
           "result": "W",
           "pick": "Wyoming -7"
+        }
+      },
+      "odds": "",
+      "payout": 0,
+      "label": "Sat 11/14 College"
+    },
+    {
+      "id": "2026-11-15-nfl",
+      "date": "2026-11-15",
+      "league": "nfl",
+      "label": "Sun 11/15 NFL",
+      "odds": "",
+      "picks": {
+        "Drew": {
+          "result": "W",
+          "pick": "Bills -7.5"
+        },
+        "Pat": {
+          "result": "W",
+          "pick": "JSN Anytime TD"
+        },
+        "Sam": {
+          "result": "W",
+          "pick": "Panthers"
+        },
+        "Tim": {
+          "result": "L",
+          "pick": "Tyler Warren Over 45.5 Rec"
+        },
+        "Tyler": {
+          "result": "W",
+          "pick": "J. Chase Over 87.5 Rec"
         }
       },
       "payout": 0
