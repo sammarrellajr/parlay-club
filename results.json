@@ -763,8 +763,6 @@
       "id": "2026-11-15-nfl",
       "date": "2026-11-15",
       "league": "nfl",
-      "label": "Sun 11/15 NFL",
-      "odds": "",
       "picks": {
         "Drew": {
           "result": "W",
@@ -785,6 +783,38 @@
         "Tyler": {
           "result": "W",
           "pick": "J. Chase Over 87.5 Rec"
+        }
+      },
+      "odds": "",
+      "payout": 0,
+      "label": "Sun 11/15 NFL"
+    },
+    {
+      "id": "2026-11-21-cfb",
+      "date": "2026-11-21",
+      "league": "cfb",
+      "label": "Sat 11/21 College",
+      "odds": "",
+      "picks": {
+        "Drew": {
+          "result": "P",
+          "pick": "Wake Forest -20.5"
+        },
+        "Pat": {
+          "result": "P",
+          "pick": "BYU -5.5"
+        },
+        "Sam": {
+          "result": "P",
+          "pick": "UCLA -3.5"
+        },
+        "Tim": {
+          "result": "P",
+          "pick": "TTU/Baylor over 57.5"
+        },
+        "Tyler": {
+          "result": "P",
+          "pick": "Vtech/Miami over 61.5"
         }
       },
       "payout": 0
