@@ -741,11 +741,11 @@
           "pick": "Wake Forest +1.5"
         },
         "Pat": {
-          "result": "P",
+          "result": "L",
           "pick": "West Virginia"
         },
         "Sam": {
-          "result": "P",
+          "result": "W",
           "pick": "Georgia -16.5"
         },
         "Tim": {
@@ -753,7 +753,7 @@
           "pick": "Alabama -14"
         },
         "Tyler": {
-          "result": "P",
+          "result": "W",
           "pick": "Wyoming -7"
         }
       },
