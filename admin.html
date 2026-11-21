@@ -99,26 +99,25 @@ details.card.fold:not([open]) { padding-bottom: 6px; }
   border-radius: 5px; padding: 3px 6px; flex: none;
 }
 
-/* One collapsible row per person, so five picks fit on a screen. */
-details.ebox > summary {
-  list-style: none;
-  cursor: pointer;
+/* Every leg sits open. Five rows is the whole job, and folding them only put
+   five taps between opening the page and typing the first pick. */
+.ebox > .ehead {
   display: flex;
   align-items: center;
   gap: 9px;
-  min-height: 34px;
-  user-select: none;
-  -webkit-user-select: none;
+  min-height: 30px;
+  margin-bottom: 10px;
 }
-details.ebox > summary::-webkit-details-marker { display: none; }
-details.ebox[open] > summary { margin-bottom: 11px; }
-details.ebox .ename { font-size: 15px; font-weight: 720; flex: none; margin-bottom: 0; }
-details.ebox .esum {
+.ebox .ename { font-size: 15px; font-weight: 720; flex: none; margin-bottom: 0; }
+.ebox .esum {
   flex: 1; min-width: 0; text-align: right;
   font-size: 12.5px; font-weight: 620; color: var(--muted);
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
-details.ebox .esum.blank { color: #414b5c; font-weight: 500; }
+.ebox .esum.blank { color: #414b5c; font-weight: 500; }
+/* A direction with no line behind it. Said out loud at entry time, because
+   nobody can settle it a week later. */
+.ebox .esum.half { color: var(--gold-soft); font-weight: 680; }
 
 /* the league choice inside the entry, tighter than the page-wide segment */
 .seg.tight { margin: 4px 0 0; }
@@ -646,12 +645,12 @@ function buildForm(entry) {
     const b = parsePick(v.pick);
     const ou = b && b.mode === "ou" ? b : null;
     const sp = b && b.mode === "sp" ? b : null;
-    return `<details class="ebox" data-player="${esc(p)}">
-      <summary>
+    return `<div class="ebox" data-player="${esc(p)}">
+      <div class="ehead">
         <span class="dot none" data-dot>-</span>
         <span class="ename">${esc(p)}</span>
         <span class="esum" data-sum>no pick yet</span>
-      </summary>
+      </div>
       <div class="leg">
         <div class="legL">
           <div class="pick-in">
@@ -715,7 +714,7 @@ function buildForm(entry) {
           <button type="button" data-v="P" class="pend ${v.result === "P" ? "on-p" : ""}">PENDING</button>
         </span>
       </div>
-    </details>`;
+    </div>`;
   }).join("");
 
   $("entries").querySelectorAll(".wl button").forEach(btn => {
@@ -731,7 +730,10 @@ function buildForm(entry) {
   });
 
   $("entries").querySelectorAll(".ebox").forEach(row => {
-    row.querySelector(".pick").addEventListener("input", () => syncRow(row));
+    row.querySelector(".pick").addEventListener("input", () => {
+      autoPend(row);
+      syncRow(row);
+    });
     syncRow(row);
   });
 
@@ -800,6 +802,24 @@ function wireBuilder(row) {
 }
 
 /* A collapsed row still has to say who has a pick and how it went. */
+/* A leg that says Over but never says over what. Fourteen went in this season
+   before anyone noticed, and none of them can be settled now. */
+function halfAPick(pick) {
+  const t = String(pick || "").trim();
+  return !!t && /\b(over|under)\b/i.test(t) && !/\d/.test(t);
+}
+
+/* Writing a pick down is saying you bet it, so the first keystroke marks the
+   row Pending. It never overrides a W or an L already clicked, and emptying
+   the field takes the Pending back off. */
+function autoPend(row) {
+  const wl = row.querySelector(".wl");
+  const on = row.querySelector(".on-w, .on-l, .on-p");
+  const typed = row.querySelector(".pick").value.trim();
+  if (typed && !on) wl.querySelector('[data-v="P"]').classList.add("on-p");
+  else if (!typed && on && on.dataset.v === "P") on.classList.remove("on-p");
+}
+
 function syncRow(row) {
   const on = row.querySelector(".on-w, .on-l, .on-p");
   const res = on ? on.dataset.v : null;
@@ -808,8 +828,10 @@ function syncRow(row) {
   dot.className = "dot " + (res === "W" ? "w" : res === "L" ? "l" : res === "P" ? "p" : "none");
   dot.textContent = res === "P" ? "P" : (res || "-");
   const sum = row.querySelector("[data-sum]");
-  sum.textContent = pick || "no pick yet";
+  const half = halfAPick(pick);
+  sum.textContent = half ? pick + " \u00b7 needs a number" : (pick || "no pick yet");
   sum.classList.toggle("blank", !pick);
+  sum.classList.toggle("half", half);
 }
 
 /* The payout only means anything when every leg won, so it only shows then. */
@@ -842,6 +864,13 @@ function syncPayoutRow() {
 }
 
 $("odds").addEventListener("input", syncPayoutRow);
+
+/* A parlay price is always signed. Typing 2526 means +2526, and five slates
+   this season were stored unsigned because nothing ever said so. */
+$("odds").addEventListener("blur", () => {
+  const v = $("odds").value.trim();
+  if (/^\d{3,5}$/.test(v)) { $("odds").value = "+" + v; syncPayoutRow(); }
+});
 
 /* Type-ahead under a field: prior picks first, then team names. Team boxes ask
    for teams only, and drop the name in without a trailing space. */
@@ -1026,6 +1055,7 @@ let PARSED = [];      // picks read out of the paste box, editable afterwards
 let ASSIGNED = [];    // player each parsed pick belongs to, or null to skip
 
 $("fillPicks").addEventListener("click", async () => {
+  if (!DATA) { say("err", "Results have not loaded yet. Connect above, then try again."); return; }
   const slip = parseSlip($("pasteBox").value);
   PARSED = slip.picks;
   if (!PARSED.length) { say("err", "Nothing that looks like a pick in that paste."); return; }
@@ -1114,7 +1144,7 @@ function applyAssign() {
     const p = ASSIGNED[i];
     if (!p) return;
     const box = boxes.find(b => b.dataset.player === p);
-    if (box) { box.querySelector(".pick").value = t; box.open = true; }
+    if (box) { box.querySelector(".pick").value = t; autoPend(box); }
   });
   boxes.forEach(syncRow);
 }
