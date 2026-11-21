@@ -660,15 +660,11 @@ textarea:focus { outline: none; border-color: #3f7dd6; box-shadow: 0 0 0 3px rgb
 
 .actions { display: grid; gap: 9px; margin-top: 4px; }
 
+/* Sits at the foot of the page instead of riding over it. The form is short
+   enough to reach the end of, and a floating bar only covered the last row. */
 .savebar {
-  position: sticky;
-  bottom: 0;
-  z-index: 20;
-  margin: 0 -15px;
-  padding: 10px 15px calc(10px + env(safe-area-inset-bottom));
-  background: rgba(10, 13, 18, 0.86);
-  backdrop-filter: blur(18px);
-  -webkit-backdrop-filter: blur(18px);
+  margin: 18px -15px 0;
+  padding: 15px 15px calc(15px + env(safe-area-inset-bottom));
   border-top: 1px solid var(--line);
 }
 
