@@ -88,7 +88,7 @@
         },
         "Tim": {
           "result": "W",
-          "pick": "Baylor/Aubrun Under"
+          "pick": "Baylor/Auburn Under"
         },
         "Tyler": {
           "result": "W",
@@ -178,14 +178,14 @@
         },
         "Tim": {
           "result": "W",
-          "pick": "BYu -7"
+          "pick": "BYU -7"
         },
         "Tyler": {
           "result": "L",
           "pick": "Syracuse -4.5"
         }
       },
-      "odds": "2526",
+      "odds": "+2526",
       "payout": 0,
       "label": "Sat 9/12 College"
     },
@@ -245,7 +245,7 @@
           "pick": "Miss State/USC Over 58.5"
         }
       },
-      "odds": "2828",
+      "odds": "+2828",
       "payout": 0,
       "label": "Sat 9/19 College"
     },
@@ -277,7 +277,7 @@
       },
       "odds": "+1700",
       "payout": 0,
-      "label": "Sun 9/20 NFL #2"
+      "label": "Sun 9/20 NFL"
     },
     {
       "id": "2026-09-20-nfl#2",
@@ -335,7 +335,7 @@
           "pick": "Oregon/USC Over 61.5"
         }
       },
-      "odds": "2324",
+      "odds": "+2324",
       "payout": 0,
       "label": "Sat 9/26 College"
     },
@@ -370,8 +370,8 @@
       "label": "Sun 9/27 NFL"
     },
     {
-      "id": "2026-09-27-nfl#2",
-      "date": "2026-09-27",
+      "id": "2026-09-28-nfl",
+      "date": "2026-09-28",
       "league": "nfl",
       "picks": {
         "Drew": {
@@ -392,12 +392,12 @@
         },
         "Tyler": {
           "result": "L",
-          "pick": "T. Bisbgy Over 11.5 Rush"
+          "pick": "T. Bigsby Over 11.5 Rush"
         }
       },
       "odds": "+2600",
       "payout": 0,
-      "label": "Sun 9/27 NFL #2 · Mon 9/28 NFL #2"
+      "label": "Mon 9/28 NFL"
     },
     {
       "id": "2026-10-03-cfb",
@@ -496,7 +496,7 @@
       "picks": {
         "Drew": {
           "result": "L",
-          "pick": "J. Taylor Anytimr TD"
+          "pick": "J. Taylor Anytime TD"
         },
         "Pat": {
           "result": "W",
@@ -556,7 +556,7 @@
       "picks": {
         "Drew": {
           "result": "L",
-          "pick": "Rams/Cardnials Over 51.5"
+          "pick": "Rams/Cardinals Over 51.5"
         },
         "Pat": {
           "result": "W",
@@ -605,7 +605,7 @@
           "pick": "Colorado State/SDSU Over 59.5"
         }
       },
-      "odds": "2212",
+      "odds": "+2212",
       "payout": 115.6,
       "label": "Fri 10/23 College"
     },
@@ -635,7 +635,7 @@
           "pick": "C. McCaffrey Over 5.5 Receptions"
         }
       },
-      "odds": "2234",
+      "odds": "+2234",
       "payout": 0,
       "label": "Sun 10/25 NFL"
     },
@@ -710,7 +710,7 @@
         },
         "Pat": {
           "result": "W",
-          "pick": "Jamar Chase Anytime TD"
+          "pick": "Ja'Marr Chase Anytime TD"
         },
         "Sam": {
           "result": "L",
