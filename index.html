@@ -13,6 +13,10 @@
 <title>Parlay Club</title>
 <link rel="stylesheet" href="styles.css">
 <style>
+/* One hue for every trend bar, checked against this panel colour for
+   contrast and kept clear of the win green and loss red. */
+:root { --viz: #3a8ae0; }
+
 /* The All tab: both records on one row, tap a row for that person's weeks. */
 .seg { grid-template-columns: 1fr 1fr 1fr; }
 
@@ -155,6 +159,78 @@
 .parlay.up .pval { color: var(--accent); }
 .parlay.down { border-color: #5c3129; }
 .parlay.down .pval { color: var(--loss); }
+
+/* ---- The hero: one number leads, three support it. ---- */
+.hero { padding: 2px 0 16px; border-bottom: 1px solid var(--line); }
+.hero-lbl { font-size: 11px; font-weight: 800; letter-spacing: 1px;
+  text-transform: uppercase; color: var(--dim); }
+.hero-val { font-size: 42px; font-weight: 800; letter-spacing: -1.6px; line-height: 1.05;
+  margin-top: 4px; font-variant-numeric: tabular-nums; color: var(--text); }
+.hero-val.up { color: var(--gold); }
+.hero-val.down { color: var(--loss); }
+.hero-sub { font-size: 12.5px; color: var(--muted); margin-top: 5px; }
+
+.strip { display: flex; padding: 13px 0; border-bottom: 1px solid var(--line); margin-bottom: 6px; }
+.strip > div { flex: 1; padding-right: 10px; min-width: 0; }
+.strip > div + div { border-left: 1px solid var(--line); padding-left: 13px; }
+.s-val { font-size: 18px; font-weight: 750; letter-spacing: -0.4px;
+  font-variant-numeric: tabular-nums; white-space: nowrap; }
+.s-val .of { color: var(--dim); font-size: 13px; font-weight: 600; }
+.s-lbl { font-size: 10.5px; color: var(--dim); margin-top: 1px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* ---- Recent form. Filled or hollow carries it, so the strip still reads
+       in grayscale and to a colourblind eye. ---- */
+.form { display: flex; gap: 3px; margin-top: 6px; align-items: center; }
+.form i { width: 7px; height: 7px; border-radius: 2px; flex: none; background: var(--panel-hi); }
+.form i.w { background: var(--accent); }
+
+/* ---- History | Stats, so the trends are one tap away instead of three
+       screens down. ---- */
+.btabs { display: grid; grid-template-columns: 1fr 1fr; gap: 2px; background: var(--panel);
+  border: 1px solid var(--line); border-radius: 10px; padding: 2px; margin: 0 0 14px; }
+.btabs button { appearance: none; border: 0; background: transparent; color: var(--muted);
+  font-family: inherit; font-size: 13px; font-weight: 650; padding: 8px 0;
+  border-radius: 8px; cursor: pointer; }
+.btabs button.on { background: var(--panel-hi); color: var(--text); }
+
+/* ---- Trend bars. One hue; length is the measure; a dashed line at the
+       50% break-even does the interpreting. ---- */
+.tgrp { margin-bottom: 20px; }
+.tgrp h3 { font-size: 11px; font-weight: 800; letter-spacing: 0.9px;
+  text-transform: uppercase; color: var(--dim); margin: 0 0 7px; }
+.tchart { position: relative; }
+.tref { position: absolute; left: calc(78px + 9px + (100% - 154px) / 2); top: 2px; bottom: 2px;
+  width: 0; border-left: 1px dashed var(--panel-hi); pointer-events: none; }
+.tbar { display: grid; grid-template-columns: 78px 1fr 58px; gap: 9px;
+  align-items: center; padding: 5px 0; }
+.tbl { font-size: 12.5px; color: var(--muted); white-space: nowrap;
+  overflow: hidden; text-overflow: ellipsis; }
+.ttrack { position: relative; height: 9px; background: var(--panel-2); border-radius: 4px; }
+.tfill { position: absolute; left: 0; top: 0; bottom: 0; background: var(--viz);
+  border-radius: 4px; min-width: 3px; }
+.tval { text-align: right; }
+.tv { font-size: 12.5px; font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.tn { font-size: 10px; color: var(--dim); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.tnote { font-size: 10.5px; color: var(--dim); margin-top: 6px; line-height: 1.45; }
+
+/* ---- The league split in dollars. "Sixty-five in, nothing back" lands in a
+       way that "44.6%" does not. ---- */
+.msplit { display: grid; gap: 7px; }
+.mrow { display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  background: var(--panel-2); border: 1px solid var(--line); border-radius: 10px; padding: 9px 11px; }
+.mrow .ml { font-size: 13px; font-weight: 650; }
+.mrow .mm { font-size: 11px; color: var(--dim); margin-top: 2px; font-variant-numeric: tabular-nums; }
+.mrow .mv { font-size: 16px; font-weight: 800; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.mrow .mv.up { color: var(--accent); }
+.mrow .mv.down { color: var(--loss); }
+
+.ins { display: flex; flex-direction: column; margin-bottom: 18px; }
+.ins div { font-size: 13px; color: var(--muted); line-height: 1.5;
+  padding: 7px 0 7px 11px; border-left: 2px solid var(--panel-hi); }
+.ins div.good { border-left-color: var(--accent); }
+.ins div.bad { border-left-color: var(--loss); }
+.ins b { color: var(--text); font-weight: 650; }
 </style>
 </head>
 <body>
@@ -182,16 +258,9 @@
 
   <div id="inplay"></div>
 
-  <div class="sec-head">
-    <h2 id="seasonTitle">Season</h2>
-    <span class="note" id="seasonNote"></span>
-  </div>
+  <div class="hero" id="hero"></div>
 
-  <div class="parlay" id="parlay"></div>
-
-  <div class="parlay" id="money"></div>
-
-  <div class="tiles" id="tiles"></div>
+  <div class="strip" id="strip"></div>
 
   <div class="rule"></div>
 
@@ -204,11 +273,20 @@
 
   <div class="rule"></div>
 
-  <div class="sec-head">
-    <h2 id="histTitle">History</h2>
-    <span class="note" id="histNote"></span>
+  <div class="btabs" id="btabs">
+    <button data-pane="hist" class="on">History</button>
+    <button data-pane="stats">Stats</button>
   </div>
-  <div id="hist"></div>
+
+  <div id="histPane">
+    <div class="sec-head">
+      <h2 id="histTitle">History</h2>
+      <span class="note" id="histNote"></span>
+    </div>
+    <div id="hist"></div>
+  </div>
+
+  <div id="statsPane" style="display:none"></div>
 
   <p class="foot-note" id="foot"></p>
   <a class="admin-link" href="admin.html">Admin</a>
@@ -266,6 +344,7 @@ async function boot(quiet) {
   STATS = computeStats(DATA);
   $("season").textContent = DATA.season ? DATA.season + " Season" : "";
   render();
+  if (PANE === "stats") renderStats();
   $("foot").textContent = "Updated " + stamp() + (changed ? " · new results" : "");
 }
 
@@ -280,10 +359,15 @@ function isLeader(key, name, played) {
 }
 
 const LG_NAME = { all: "Overall", cfb: "College Football", nfl: "NFL" };
-const TILE_LAB = { all: "Group overall", cfb: "Group college", nfl: "Group NFL" };
-const PARLAY_LAB = { all: "Season parlay wins", cfb: "Season college parlay wins",
-                     nfl: "Season NFL parlay wins" };
-const MONEY_LAB = { all: "Money on the year", cfb: "College money", nfl: "NFL money" };
+const MONEY_LAB = { all: "Season profit", cfb: "College profit", nfl: "NFL profit" };
+
+/* The longest run anyone has going, for the third slot in the strip.
+   Not bestRun: app.js already owns that name and computeStats calls it. */
+function topRun(rows, key) {
+  let n = 0, who = "";
+  rows.forEach(r => { const b = r.best[key] || 0; if (b > n) { n = b; who = r.name; } });
+  return { n, who };
+}
 
 /* Anything still running goes at the very top, legs and all. */
 function renderInPlay() {
@@ -387,44 +471,33 @@ function render() {
 
   const won = STATS.parlays[key];
   const done = STATS.settled[key];
-  $("parlay").className = "parlay" + (won ? " hit" : "");
-  $("parlay").innerHTML =
-    `<div>
-       <div class="plab">${PARLAY_LAB[key]}</div>
-       <div class="psubl">${done
-         ? "out of " + done + " completed slate" + (done === 1 ? "" : "s")
-         : "no slate has finished yet"}</div>
-     </div>
-     <div class="pval">${won}</div>`;
-
   const m = STATS.money[key];
-  $("money").className = "parlay mini" + (m.net > 0 ? " up" : m.net < 0 ? " down" : "");
-  $("money").innerHTML =
+
+  /* The money leads. It is the one number that says whether any of this is
+     working, and the old page buried it under two other bars. */
+  $("hero").innerHTML =
+    `<div class="hero-lbl">${MONEY_LAB[key]}</div>
+     <div class="hero-val ${m.net > 0 ? "up" : m.net < 0 ? "down" : ""}">${fmtMoney(m.net)}</div>
+     <div class="hero-sub">${fmtMoney(m.wagered)} wagered &middot; ${fmtMoney(m.won)} back &middot; ${
+       n} ${key === "all" ? (n === 1 ? "slate" : "slates") : (n === 1 ? "week" : "weeks")}${
+       m.unpriced ? " &middot; " + m.unpriced + " payout" +
+       (m.unpriced === 1 ? "" : "s") + " not entered" : ""}</div>`;
+
+  /* Three supporting numbers on one line, no boxes. */
+  const run = topRun(rows, key);
+  $("strip").innerHTML =
     `<div>
-       <div class="plab">${MONEY_LAB[key]}</div>
-       <div class="psubl">${fmtMoney(m.wagered)} in at ${fmtMoney(m.stake)} a slate &middot; ${
-         fmtMoney(m.won)} back${m.unpriced ? " &middot; " + m.unpriced + " payout" +
-         (m.unpriced === 1 ? "" : "s") + " not entered" : ""}</div>
+       <div class="s-val">${won}<span class="of">/${done}</span></div>
+       <div class="s-lbl">Parlays hit</div>
      </div>
-     <div class="pval">${fmtMoney(m.net)}</div>`;
-
-  $("tiles").innerHTML =
-    `<div class="tile">
-       <div class="lab">${TILE_LAB[key]}</div>
-       <div class="val">${fmtRec(rec)}</div>
-       <div class="foot">${fmtPct(gp, rec)} &middot; ${n} ${
-         key === "all" ? (n === 1 ? "entry" : "entries") : (n === 1 ? "week" : "weeks")}</div>
+     <div>
+       <div class="s-val">${fmtPct(gp, rec)}</div>
+       <div class="s-lbl">Legs won</div>
      </div>
-     <div class="tile">
-       <div class="lab">Leader</div>
-       <div class="val name">${esc(leaderLabel(ld))}</div>
-       <div class="foot">${esc(leaderFoot(ld))}</div>
+     <div>
+       <div class="s-val">${run.n ? "W" + run.n : "&mdash;"}</div>
+       <div class="s-lbl">${run.n ? "Best run &middot; " + esc(run.who) : "Best run"}</div>
      </div>`;
-
-  // the tabs already say which league, so the heads stay put
-  $("seasonNote").textContent = n
-    ? n + (key === "all" ? (n === 1 ? " slate" : " slates")
-                         : (n === 1 ? " week" : " weeks")) : "";
   const hot = rows.filter(r => r.streak[key] >= 2).length;
   const cold = rows.filter(r => r.streak[key] <= -2).length;
   const pend = STATS.pending[key];
@@ -455,6 +528,7 @@ function render() {
         <div class="pmain">
           <div class="pnm">${esc(r.name)}</div>
           ${sub ? `<div class="psub">${sub}</div>` : ""}
+          <div class="form" title="Last 10 legs, oldest first">${formStrip(r.name, key)}</div>
         </div>
         <div class="pright">
           <div class="${rungClass(ladder[i])}"${rungStyle(ladder[i])}>${fmtRec(rc)}</div>
@@ -525,6 +599,7 @@ function renderAll(rows, ladder) {
         <div class="pmain">
           <div class="pnm">${esc(r.name)}</div>
           ${sub ? `<div class="psub">${sub}</div>` : ""}
+          <div class="form" title="Last 10 legs, oldest first">${formStrip(r.name, null)}</div>
         </div>
         <div class="pright">
           <div class="${rungClass(ladder[i])}"${rungStyle(ladder[i])}>${fmtRec(r.all)}</div>
@@ -634,6 +709,202 @@ function renderHistory(key, name) {
     b.addEventListener("click", () => shareSlate(b.dataset.slate)));
 }
 
+/* ---------- recent form ---------- */
+
+/* The last ten settled legs, oldest to newest. Filled or hollow rather than
+   two colours, so it still reads in grayscale and to a colourblind eye. */
+function formStrip(name, league) {
+  const seq = [];
+  DATA.entries.forEach(e => {
+    if (league && e.league !== league) return;
+    const v = e.picks[name] || {};
+    if (v.result === "W" || v.result === "L") seq.push(v.result);
+  });
+  if (!seq.length) return "";
+  return seq.slice(-10).map(r => `<i class="${r === "W" ? "w" : ""}"></i>`).join("");
+}
+
+/* ---------- stats and trends ---------- */
+
+/* What kind of bet a pick is, read off the text people actually type into
+   admin. Deliberately loose: it has to cope with "J. Chase Anytime TD" and
+   "WVU/Cincinnati Over 64.5" from the same box. */
+function marketOf(pick) {
+  const t = String(pick || "").toLowerCase();
+  if (/anytime|touchdown|scorer|\btd\b/.test(t)) return "TD scorer";
+  if (/\bover\b|\bunder\b|\bo\/u\b/.test(t)) {
+    return (/\//.test(t) || /team (points|under|over)/.test(t)) ? "Game total" : "Player prop";
+  }
+  if (/[+-]\s?\d/.test(t)) return "Spread";
+  return "Moneyline";
+}
+
+const MON_LAB = ["Jan", "Feb", "Mar", "Apr", "May", "Jun",
+                 "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+function buildTrends(key) {
+  const list = key === "all" ? DATA.entries : DATA.entries.filter(e => e.league === key);
+  const mkt = {}, mon = {};
+  list.forEach(e => {
+    const ym = String(e.date || "").slice(0, 7);
+    DATA.players.forEach(p => {
+      const v = e.picks[p] || {};
+      if (v.result !== "W" && v.result !== "L") return;
+      const fld = v.result === "W" ? "w" : "l";
+      const k = marketOf(v.pick);
+      (mkt[k] = mkt[k] || { w: 0, l: 0 })[fld]++;
+      if (ym) (mon[ym] = mon[ym] || { w: 0, l: 0 })[fld]++;
+    });
+  });
+  return { mkt, mon };
+}
+
+/* One bar. Length is the whole measure, so it starts at zero and runs to
+   100%; the dashed line at 50% does the interpreting. */
+function tbar(label, rec, showN) {
+  const n = rec.w + rec.l;
+  if (!n) return "";
+  const pct = n ? rec.w / n * 100 : 0;
+  return `<div class="tbar" title="${esc(label)}: ${rec.w}-${rec.l}">
+      <div class="tbl">${esc(label)}</div>
+      <div class="ttrack"><div class="tfill" style="width:${pct.toFixed(1)}%"></div></div>
+      <div class="tval"><div class="tv">${pct.toFixed(1)}%</div>
+        <div class="tn">${showN ? "n=" + n : rec.w + "-" + rec.l}</div></div>
+    </div>`;
+}
+
+function chart(title, bars, note) {
+  if (!bars) return "";
+  return `<div class="tgrp"><h3>${esc(title)}</h3>
+      <div class="tchart"><div class="tref"></div>${bars}</div>
+      ${note ? `<div class="tnote">${note}</div>` : ""}
+    </div>`;
+}
+
+function renderStats() {
+  if (!DATA || !STATS) return;
+  const key = LG;
+  const t = buildTrends(key);
+  const rows = STATS.byLeague[key];
+  const out = [];
+
+  /* Dollars before percentages. The league split is the finding of the
+     season and "$65 in, nothing back" says it better than a win rate. */
+  if (key === "all") {
+    const money = [["cfb", "College"], ["nfl", "NFL"]].map(([k, lab]) => {
+      const m = STATS.money[k];
+      if (!m || !m.wagered) return "";
+      const cls = m.net > 0 ? "up" : m.net < 0 ? "down" : "";
+      return `<div class="mrow">
+          <div><div class="ml">${lab}</div>
+            <div class="mm">${fmtMoney(m.wagered)} in &middot; ${fmtMoney(m.won)} back &middot; ${
+              STATS.parlays[k]} of ${STATS.settled[k]} hit</div></div>
+          <div class="mv ${cls}">${fmtMoney(m.net)}</div>
+        </div>`;
+    }).join("");
+    if (money) out.push(`<div class="tgrp"><h3>Where the money went</h3>
+        <div class="msplit">${money}</div></div>`);
+  }
+
+  /* Findings in plain language, worked out from the data rather than
+     written down, so they stay true as the season goes on. */
+  const ins = [];
+  if (key === "all") {
+    const ch = STATS.parlays.cfb, nh = STATS.parlays.nfl;
+    const cs = STATS.settled.cfb, ns = STATS.settled.nfl;
+    if (cs && ns) {
+      if (ch && !nh) ins.push(["good",
+        `Every parlay that cashed was <b>college</b>. The NFL slate is <b>0 for ${ns}</b>.`]);
+      else if (nh && !ch) ins.push(["good",
+        `Every parlay that cashed was <b>NFL</b>. The college slate is <b>0 for ${cs}</b>.`]);
+    }
+  }
+  const mk = Object.keys(t.mkt).map(k => {
+    const v = t.mkt[k], n = v.w + v.l;
+    return { k: k, w: v.w, l: v.l, n: n, p: n ? v.w / n : 0 };
+  }).filter(x => x.n >= 15).sort((a, b) => a.p - b.p);
+  if (mk.length && mk[0].p < 0.5) {
+    ins.push(["bad", `<b>${esc(mk[0].k)}s</b> are the leak: <b>${
+      Math.round(mk[0].p * 100)}%</b> across ${mk[0].n} legs, the only type under 50%.`]);
+  }
+  if (mk.length > 1) {
+    const b = mk[mk.length - 1];
+    ins.push(["", `Best type is the <b>${esc(b.k.toLowerCase())}</b> at <b>${
+      Math.round(b.p * 100)}%</b> on ${b.n} legs.`]);
+  }
+  if (ins.length) {
+    out.push(`<div class="ins">${ins.map(x =>
+      `<div class="${x[0]}">${x[1]}</div>`).join("")}</div>`);
+  }
+
+  /* League split, when both are in view. */
+  if (key === "all") {
+    const lg = { cfb: { w: 0, l: 0 }, nfl: { w: 0, l: 0 } };
+    rows.forEach(r => {
+      lg.cfb.w += r.cfb.w; lg.cfb.l += r.cfb.l;
+      lg.nfl.w += r.nfl.w; lg.nfl.l += r.nfl.l;
+    });
+    out.push(chart("College vs NFL",
+      tbar("College", lg.cfb) + tbar("NFL", lg.nfl),
+      "Dashed line is 50%."));
+  }
+
+  /* Bet type. Anything under fifteen legs is noise, so it is named below
+     the chart rather than drawn as a bar you would read too much into. */
+  const all = Object.keys(t.mkt).map(k => {
+    const v = t.mkt[k], n = v.w + v.l;
+    return { k: k, rec: v, n: n, p: n ? v.w / n : 0 };
+  }).sort((a, b) => b.p - a.p);
+  const big = all.filter(x => x.n >= 15);
+  const small = all.filter(x => x.n < 15);
+  if (big.length) {
+    out.push(chart("By bet type",
+      big.map(x => tbar(x.k, x.rec, true)).join(""),
+      small.length ? "Left out: " + small.map(x =>
+        esc(x.k.toLowerCase()) + " (" + x.n + " leg" + (x.n === 1 ? "" : "s") + ")").join(", ") +
+        ". Too few to read." : ""));
+  }
+
+  /* By month, oldest first. A month under fifteen legs folds into the one
+     before it rather than showing up as a spike that is really one slate. */
+  const keys = Object.keys(t.mon).sort();
+  const buckets = [];
+  keys.forEach(ym => {
+    const v = t.mon[ym];
+    const lab = MON_LAB[Number(ym.slice(5, 7)) - 1] || ym;
+    const prev = buckets[buckets.length - 1];
+    if (prev && prev.rec.w + prev.rec.l < 15) {
+      prev.lab = prev.lab.split("\u2013")[0] + "\u2013" + lab;
+      prev.rec.w += v.w; prev.rec.l += v.l;
+    } else {
+      buckets.push({ lab: lab, rec: { w: v.w, l: v.l } });
+    }
+  });
+  if (buckets.length > 1) {
+    out.push(chart("By month", buckets.map(b => tbar(b.lab, b.rec, true)).join("")));
+  }
+
+  $("statsPane").innerHTML = out.join("") ||
+    '<div class="empty">Not enough logged yet to show a trend.</div>';
+}
+
+/* ---------- the two bottom panes ---------- */
+
+let PANE = "hist";
+
+function showPane(name) {
+  PANE = name;
+  $("histPane").style.display = name === "hist" ? "" : "none";
+  $("statsPane").style.display = name === "stats" ? "" : "none";
+  [...$("btabs").children].forEach(b => b.classList.toggle("on", b.dataset.pane === name));
+  if (name === "stats") renderStats();
+}
+
+$("btabs").addEventListener("click", e => {
+  const b = e.target.closest("button");
+  if (b) showPane(b.dataset.pane);
+});
+
 $("seg").addEventListener("click", e => {
   const b = e.target.closest("button");
   if (!b) return;
@@ -641,6 +912,7 @@ $("seg").addEventListener("click", e => {
   OPEN = null;
   [...$("seg").children].forEach(c => c.classList.toggle("on", c === b));
   if (STATS) render();
+  if (PANE === "stats") renderStats();
 });
 
 $("refresh").addEventListener("click", () => boot());
