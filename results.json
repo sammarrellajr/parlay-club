@@ -793,8 +793,6 @@
       "id": "2026-11-21-cfb",
       "date": "2026-11-21",
       "league": "cfb",
-      "label": "Sat 11/21 College",
-      "odds": "",
       "picks": {
         "Drew": {
           "result": "W",
@@ -815,6 +813,38 @@
         "Tyler": {
           "result": "L",
           "pick": "Vtech/Miami over 61.5"
+        }
+      },
+      "odds": "",
+      "payout": 0,
+      "label": "Sat 11/21 College"
+    },
+    {
+      "id": "2026-11-22-nfl",
+      "date": "2026-11-22",
+      "league": "nfl",
+      "label": "Sun 11/22 NFL",
+      "odds": "",
+      "picks": {
+        "Drew": {
+          "result": "P",
+          "pick": "Jags -5.5"
+        },
+        "Pat": {
+          "result": "P",
+          "pick": "Bucky Irving Anytime TD"
+        },
+        "Sam": {
+          "result": "P",
+          "pick": "Vikings +3.5"
+        },
+        "Tim": {
+          "result": "P",
+          "pick": "James Cook Anytime TD"
+        },
+        "Tyler": {
+          "result": "P",
+          "pick": ""
         }
       },
       "payout": 0
