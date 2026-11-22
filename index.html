@@ -29,21 +29,26 @@
 }
 .prow.all.open .pchev { transform: rotate(90deg); }
 
-.split { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; margin-top: 10px; }
-.sp {
-  display: flex; align-items: baseline; justify-content: space-between; gap: 6px;
-  background: var(--panel-2); border: 1px solid var(--line);
-  border-radius: 10px; padding: 7px 10px; min-width: 0;
-}
-.spl {
-  font-size: 10px; font-weight: 750; letter-spacing: 0.6px;
-  text-transform: uppercase; color: var(--dim); white-space: nowrap;
-}
-.spr { font-size: 15px; font-weight: 750; font-variant-numeric: tabular-nums; white-space: nowrap; }
-.spr.good { color: var(--accent); }
-.spr.bad { color: var(--loss); }
-.spr.even { color: var(--text); }
-.spr.none { color: var(--dim); }
+/* One labelled line per league. Bar length is win rate on a fixed 0-100 scale
+   with a tick at 50%, so a player's two bars compare to each other and the
+   same bar compares straight down the column. The two bordered boxes this
+   replaces showed a bare 9-5 with nothing to measure it against.
+   Named lg* on purpose: .mrow and .mv already belong to the money rows in
+   the Stats section, and reusing them pulled that box styling in here. */
+.lgrow { display: grid; grid-template-columns: 50px 1fr 38px; gap: 9px;
+  align-items: center; margin-top: 4px; }
+.lgl { font-size: 9.5px; font-weight: 780; letter-spacing: 0.7px; line-height: 1.1;
+  text-transform: uppercase; color: var(--dim); white-space: nowrap; }
+.lgt { position: relative; height: 7px; background: var(--panel-2); border-radius: 4px; }
+.lgf { position: absolute; left: 0; top: 0; bottom: 0; background: var(--viz);
+  border-radius: 4px; min-width: 3px; }
+.lgt::after { content: ""; position: absolute; left: 50%; top: -2px; bottom: -2px;
+  width: 0; border-left: 1px dashed var(--panel-hi); }
+.lgv { font-size: 11px; font-weight: 700; font-variant-numeric: tabular-nums;
+  line-height: 1.1; text-align: right; color: var(--muted); white-space: nowrap; }
+.lgform { display: grid; grid-template-columns: 50px 1fr; gap: 9px;
+  align-items: center; margin-top: 7px; }
+.lgform .form { margin-top: 0; }
 
 .pdet { display: none; margin-top: 11px; border-top: 1px solid var(--line); padding-top: 9px; }
 
@@ -598,11 +603,14 @@ function renderAll(rows, ladder) {
       ? streakBadge(st)
       : '<span class="nodata">No results yet</span>';
 
-    const half = (lab, rc, p) => `<div class="sp">
-        <span class="spl">${lab}</span>
-        <span class="spr ${rc.w + rc.l ? pctClass(p, rc) : "none"}">${
-          rc.w + rc.l ? fmtRec(rc) : "&mdash;"}</span>
+    const bar = (lab, rc) => {
+      const n = rc.w + rc.l;
+      return `<div class="lgrow">
+        <div class="lgl">${lab}</div>
+        <div class="lgt"><div class="lgf" style="width:${n ? (rc.w / n * 100).toFixed(1) : 0}%"></div></div>
+        <div class="lgv">${n ? fmtRec(rc) : "&mdash;"}</div>
       </div>`;
+    };
 
     return `<div class="prow all${lead ? " lead" : ""}${OPEN === r.name ? " open" : ""}" data-nm="${esc(r.name)}">
       <div class="ptop">
@@ -610,7 +618,6 @@ function renderAll(rows, ladder) {
         <div class="pmain">
           <div class="pnm">${esc(r.name)}</div>
           ${sub ? `<div class="psub">${sub}</div>` : ""}
-          <div class="form" title="Last 10 legs, oldest first">${formStrip(r.name, null)}</div>
         </div>
         <div class="pright">
           <div class="${rungClass(ladder[i])}"${rungStyle(ladder[i])}>${fmtRec(r.all)}</div>
@@ -618,9 +625,11 @@ function renderAll(rows, ladder) {
         </div>
         <span class="pchev">&#9654;</span>
       </div>
-      <div class="split">
-        ${half("NCAA", r.cfb, r.cfbPct)}
-        ${half("NFL", r.nfl, r.nflPct)}
+      ${bar("College", r.cfb)}
+      ${bar("NFL", r.nfl)}
+      <div class="lgform">
+        <div class="lgl">Last 10</div>
+        <div class="form" title="Last 10 legs, oldest first">${formStrip(r.name, null)}</div>
       </div>
       <div class="pdet">${personDetail(r, "all")}</div>
     </div>`;
