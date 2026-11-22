@@ -670,6 +670,7 @@ function cleanPickLine(t) {
     .replace(/^\d+[.)]\s+/, "")             // "1." numbering
     .replace(/\s+/g, " ")
     .replace(/([+-])\s+(?=[\d.])/g, "$1")   // "Pittsburgh - 16.5" -> "Pittsburgh -16.5"
+    .replace(/\bATD\b/gi, "Anytime TD")      // the shorthand the slip uses
     .trim();
 }
 
