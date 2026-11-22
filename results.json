@@ -797,23 +797,23 @@
       "odds": "",
       "picks": {
         "Drew": {
-          "result": "P",
+          "result": "W",
           "pick": "Wake Forest -20.5"
         },
         "Pat": {
-          "result": "P",
+          "result": "L",
           "pick": "BYU -5.5"
         },
         "Sam": {
-          "result": "P",
+          "result": "L",
           "pick": "UCLA -3.5"
         },
         "Tim": {
-          "result": "P",
+          "result": "L",
           "pick": "TTU/Baylor over 57.5"
         },
         "Tyler": {
-          "result": "P",
+          "result": "L",
           "pick": "Vtech/Miami over 61.5"
         }
       },
