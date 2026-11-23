@@ -824,27 +824,27 @@
       "date": "2026-11-22",
       "league": "nfl",
       "label": "Sun 11/22 NFL",
-      "odds": "",
+      "odds": "+1330",
       "picks": {
         "Drew": {
-          "result": "P",
+          "result": "L",
           "pick": "Jags -5.5"
         },
         "Pat": {
-          "result": "P",
+          "result": "W",
           "pick": "Bucky Irving Anytime TD"
         },
         "Sam": {
-          "result": "P",
+          "result": "L",
           "pick": "Vikings +3.5"
         },
         "Tim": {
-          "result": "P",
+          "result": "W",
           "pick": "James Cook Anytime TD"
         },
         "Tyler": {
-          "result": "P",
-          "pick": ""
+          "result": "W",
+          "pick": "Emmett Johnson Over 123.5 Rush/Rec"
         }
       },
       "payout": 0
