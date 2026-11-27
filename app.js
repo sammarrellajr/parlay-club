@@ -709,7 +709,7 @@ function priorNameIndex(data) {
     const parts = t.split(/\s+/);
     if (parts.length > 3) return;
     const last = parts[parts.length - 1].toLowerCase().replace(/[^a-z'-]/g, "");
-    if (last.length < 4) return;
+    if (last.length < 2) return;        // JSN and the like are how he writes them
     (seen[last] = seen[last] || new Set()).add(t);
   }));
   const out = {};
@@ -717,19 +717,68 @@ function priorNameIndex(data) {
   return out;
 }
 
-function titleCase(s) {
-  return String(s).replace(/\S+/g, w =>
-    /^[a-z]\.$/i.test(w) ? w.toUpperCase() : w.charAt(0).toUpperCase() + w.slice(1).toLowerCase());
+/* Every skill-position player on an NFL roster, written "First Last", taken
+   once from ESPN and kept here so that a paste needs no network and works on
+   a bad signal. Around 5KB on the wire once compressed. There is no college
+   list because the college picks in this pool are spreads and totals, not
+   player props. */
+const NFL_SKILL = "A.J. Brown|AJ Barner|AJ Dillon|AJ Henning|Aaron Jones|Adam Prentice|Adam Randall|Adam Trautman|Adonai Mitchell|Adrian Martinez|Ahmani Marshall|Aidan O'Connell|Al-Jay Henderson|Alec Ingold|Alec Pierce|Alvin Kamara|Amar Johnson|Ameer Abdullah|Amon-Ra St. Brown|Andre Szmyt|Andrei Iosivas|Andrew Armstrong|Andrew Beck|Andy Borregales|Andy Dalton|Anthony Gould|Anthony Richardson|Anthony Smith|Anthony Tyus|Antonio Williams|Antwane Wells|Arian Smith|Ashton Dulin|Ashton Jeanty|Athan Kaliakmanis|Audric Estime|Austin Ekeler|Austin Hooper|Austin Trammell|Baker Mayfield|Bam Knight|Barion Brown|Bauer Sharp|Beaux Collins|Behren Morton|Ben Sims|Ben Sinnott|Ben Skowronek|Ben VanSumeren|Ben Yurosek|Bhayshul Tuten|Bijan Robinson|Blake Corum|Blake Grupe|Blake Whiteheart|Bo Melton|Bo Nix|Brady Boyd|Brady Cook|Brady Russell|Braelon Allen|Brandin Cooks|Brandon Aiyuk|Brandon Aubrey|Brandon Johnson|Brandon McManus|Brandon Smith|Brashard Smith|Braxton Berrios|Brayden Willis|Breece Hall|Brenden Bates|Brenen Thompson|Brennan Presley|Brenton Strange|Brett Rypien|Brevin Jordan|Brevyn Spann-Ford|Brian Robinson|Brian Thomas|Britain Covey|British Brooks|Brittain Brown|Brock Bowers|Brock Lampe|Brock Purdy|Brock Wright|Bryce Lance|Bryce Oliver|Bryce Young|Brycen Tremayne|Bub Means|Bucky Irving|C.J. Stroud|CJ Daniels|CJ Dippre|CJ Donaldson|CJ Williams|Cade Klubnik|Cade Otton|Cade Stover|Caden Prieskorn|Cairo Santos|Caleb Douglas|Caleb Lohner|Caleb Williams|Calvin Austin|Calvin Ridley|Cam Grandy|Cam Little|Cam Miller|Cam Skattebo|Cam Ward|Camden Brown|Cameron Dicker|Cameron Latu|Carlos Washington|Carnell Tate|Carsen Ryan|Carson Beck|Carson Towt|Carson Wentz|Carter Runyon|Case Keenum|Casey Washington|Caullin Lacy|Cedric Tillman|CeeDee Lamb|Chad Ryland|Chandler Brayboy|Charlie Jones|Charlie Kolar|Charlie Smyth|Charlie Woerner|Chase Brown|Chase McLaughlin|Chig Okonkwo|Chimere Dike|Chip Trayanum|Chris Bell|Chris Blair|Chris Boswell|Chris Brazzell|Chris Brooks|Chris Godwin|Chris Manhertz|Chris Moore|Chris Myarick|Chris Olave|Chris Rodriguez|Christian Kirk|Christian McCaffrey|Christian Watson|Chuba Hubbard|Cody Hardy|Cody Schrader|Cody White|Colbie Young|Colby Parkinson|Cole Burgess|Cole Kmet|Cole Payton|Cole Turner|Coleman Owen|Colson Yankoff|Colston Loveland|Connor Heyward|Cooper Kupp|Corey Kiner|Courtland Sutton|Cyrus Allen|D'Andre Swift|D.J. Montgomery|DJ Giddens|DJ Herman|DJ Moore|DJ Uiagalelei|DK Metcalf|Dak Prescott|Dalen Cambre|Dallas Goedert|Dallen Bentley|Dalton Kincaid|Dalton Schultz|Dameon Pierce|Damon Bankston|Dan Villari|Dane Key|Daniel Bellinger|Daniel Carlson|Daniel Sobkowicz|Dareke Young|Darius Cooper|Darnell Mooney|Darnell Washington|Darren Waller|Davante Adams|David Martin-Robinson|David Montgomery|David Moore|David Njoku|Davis Allen|Davis Mills|Davon Booth|Dawson Knox|De'Von Achane|De'Zhaun Stribling|DeAndre Carter|DeMario Douglas|DeVonta Smith|Dean Connors|Dean Patterson|Dee Eskridge|DeeJay Dallas|Deebo Samuel|Deion Burks|Demarcus Robinson|Demond Claiborne|Denzel Boston|Derius Davis|Derrick Henry|Deshaun Watson|Devaughn Vele|Deven Thompkins|Devin Culp|Devin Duvernay|Devin Neal|Devin Singletary|Devontez Walker|Dillon Bell|Dillon Gabriel|Dohnte Meyers|Dominic Lovett|Dominic Zvada|Dont'e Thornton|Dontae Fleming|Dontayvion Wicks|Drake Dabney|Drake London|Drake Maye|Drew Allar|Drew Lock|Drew Ogletree|Drew Sample|Drew Stevens|Durham Smythe|Dyami Brown|Dylan Drummond|Dylan Laube|Dylan Sampson|E.J. Jenkins|Easton Stick|Eddy Pineiro|Efton Chism|Eli Heidenreich|Eli Raridon|Eli Stowers|Elic Ayomanor|Elijah Arroyo|Elijah Higgins|Elijah Mitchell|Elijah Moore|Elijah Sarratt|Emanuel Wilson|Emari Demercado|Emeka Egbuka|Emmanuel Henderson|Emmett Johnson|Eric Gray|Eric Rivers|Eric Saubert|Erick All|Erik Ezukanma|Evan Engram|Evan Hull|Evan McPherson|Feleipe Franks|Fernando Mendoza|Foster Moreau|Frank Gore|Gage Larvadain|Gardner Minshew|Garrett Greene|Garrett Nussmeier|Garrett Wilson|Gavin Bartholomew|Geno Smith|George Holani|George Kittle|George Pickens|Germie Bernard|Graham Mertz|Grant Calcaterra|Grant Finley|Greg Desrosiers|Greg Dortch|Greg Dulcich|Gunnar Helm|Gunner Olszewski|Harold Fannin|Harrison Bryant|Harrison Butker|Harrison Mevis|Harrison Wallace|Hassan Haskins|Hayden Large|Hayden Rucci|Haynes King|Hendon Hooker|Hunter Henry|Hunter Long|Hunter Luepke|Ian Thomas|Ian Wheeler|Irv Charles|Isaac Guerendo|Isaac TeSlaa|Isaiah Bond|Isaiah Davis|Isaiah Likely|Isaiah Neyor|Isaiah Williams|Isiah Pacheco|Israel Abanikanda|J'Mari Taylor|J. Michael Sturdivant|J.J. McCarthy|J.K. Dobbins|JP Richardson|Ja'Kobi Lane|Ja'Marr Chase|Ja'Mori Maclin|Ja'Tavion Sanders|Ja'seem Reed|Jabari Small|Jacardia Wright|Jack Bech|Jack Endries|Jack Stoll|Jack Strand|Jack Westover|Jackson Hawes|Jackson Meeks|Jacob Cowing|Jacob De Jesus|Jacob Saylors|Jacoby Brissett|Jacory Croskey-Merritt|Jadarian Price|Jaden Bradley|Jahan Dotson|Jahdae Walker|Jahmyr Gibbs|Jake Bates|Jake Bobo|Jake Briningstool|Jake Browning|Jake Elliott|Jake Ferguson|Jake Haener|Jake Moody|Jake Tonges|Jakobi Meyers|Jaleel McLaughlin|Jalen Brooks|Jalen Coker|Jalen Hurts|Jalen McMillan|Jalen Milroe|Jalen Moreno-Cropper|Jalen Nailor|Jalen Reagor|Jalen Royals|Jalen Tolbert|Jalin Hyatt|Jalon Daniels|Jam Miller|Jamaal Pritchett|Jamari Thrash|Jameis Winston|James Conner|James Cook|James Mitchell|Jameson Williams|Jared Goff|Jared Wayne|Jared Wiley|Jaren Kanak|Jaret Patterson|Jarrett Stidham|Jashaun Corbin|Jason Brownlee|Jason Myers|Jason Sanders|Jauan Jennings|Javonte Williams|Jawhar Jordan|Jaxon Smith-Njigba|Jaxson Dart|Jayden Daniels|Jayden Higgins|Jayden Reed|Jaydn Ott|Jaydon Blue|Jaylen Waddle|Jaylen Warren|Jaylen Wright|Jaylin Lane|Jaylin Noel|Jeff Caldwell|Jelani Woods|Jeremiyah Love|Jeremy McNichols|Jeremy Ruckert|Jerome Ford|Jerry Jeudy|Jeshaun Jones|Jimmy Holiday|Jimmy Horn|Joe Burrow|Joe Fagnano|Joe Flacco|Joe Milton|Joe Royer|Joel Wilson|Joey Aguilar|Joey Slye|John Bates|John FitzPatrick|John Metchie|John Michael Gyllenborg|Johnny Mundt|Johnny Wilson|Jonah Coleman|Jonathan Mingo|Jonathan Taylor|Jonathon Brooks|Jonnu Smith|Jordan Addison|Jordan Hudson|Jordan James|Jordan Love|Jordan Mason|Jordan Moore|Jordan Waters|Jordan Watkins|Jordan Whittington|Jordyn Tyson|Joseph Manjack|Josh Allen|Josh Cameron|Josh Cuevas|Josh Downs|Josh Jacobs|Josh Johnson|Josh Kelly|Josh Oliver|Josh Pitsenberger|Josh Whyle|Josh Williams|Joshua Dobbs|Joshua Karty|Joshua Palmer|Joshua Simon|Julian Hicks|Julian Hill|Julius Chestnut|Justice Hill|Justin Fields|Justin Herbert|Justin Jackson|Justin Jefferson|Justin Joly|Justin Tucker|Justin Watson|Juwan Johnson|K.J. Osborn|KC Concepcion|Ka'imi Fairbairn|KaVontae Turpin|Kaden Davis|Kaden Wetjen|Kaelon Black|Kaleb Johnson|Kalel Mullings|Kalif Raymond|Kameron Johnson|Kansei Matsuzawa|Kayshon Boutte|Kaytron Allen|Ke'Shawn Williams|KeAndre Lambert-Smith|Keaton Mitchell|Kedon Slovis|Keenan Allen|Keleki Latu|Kendall Milton|Kendre Miller|Kendrick Bourne|Kendrick Law|Kene Nwangwu|Kenneth Walker|Kenny Fletcher|Kenny Gainwell|Kenny Pickett|Kenny Yeboah|Kentrel Bullock|Kenyon Sadiq|Keon Coleman|Kevin Austin|Kevin Coleman|KhaDarel Hodge|Khalil Dinkins|Khalil Herbert|Khalil Shakir|Kimani Vidal|Kirk Cousins|Ko Kieft|Kolbe Katsis|Konata Mumpfield|Kurtis Rourke|Kyle Allen|Kyle Dixon|Kyle Juszczyk|Kyle McCord|Kyle Monangai|Kyle Pitts|Kyle Trask|Kyle Williams|Kylen Granson|Kyler Murray|Kyren Williams|Ladd McConkey|Lake McRee|Lamar Jackson|Lan Larison|Laquon Treadwell|LeQuint Allen|Lew Nichols|Lewis Bond|Lil'Jordan Humphrey|Lucas Krull|Lucas Scott|Lucky Jackson|Luke Altmyer|Luke Farrell|Luke Grimm|Luke McCaffrey|Luke Musgrave|Luke Schoonmaker|Luther Burden|Mac Jones|Mack Hollins|Makai Lemon|Malachi Corley|Malachi Fields|Malik Benson|Malik Davis|Malik McClain|Malik Nabers|Malik Washington|Malik Willis|MarShawn Lloyd|Marcus Mariota|Mark Andrews|Mark Redman|Marlin Klein|Marquez Valdes-Scantling|Marvin Harrison|Marvin Mims|Mason Rudolph|Mason Taylor|Mason Tipton|Matt Gay|Matt Hibner|Matt Lauter|Matthew Caldwell|Matthew Golden|Matthew Stafford|Max Bredeson|Max Brosmer|Max Hurleman|Max Klare|Mecole Hardman|Michael Bandy|Michael Briscoe|Michael Burton|Michael Carter|Michael Mayer|Michael Penix|Michael Pittman|Michael Trigg|Michael Wilson|Michael Wortham|Mike Evans|Mike Gesicki|Mike Washington|Miles Kitselman|Mitchell Evans|Mitchell Tinsley|Mitchell Trubisky|Mo Alie-Cox|Moliki Matavao|Montorie Foster|Myles Montgomery|Myles Price|Nate Adkins|Nate Boerkircher|Nate Carter|Nicholas Singleton|Nick DeGennaro|Nick Kallerup|Nick Mullens|Nick Muse|Nick Vannett|Nick Westbrook-Ikhine|Nico Collins|Nikko Remigio|Nikola Kalinic|Noah Fant|Noah Gray|Noah Thomas|Noah Whittington|Odell Beckham|Olamide Zaccheaus|Ollie Gordon|Omar Cooper|Omari Evans|Omarion Hampton|Oronde Gadsden|Oscar Delp|Owen Wright|Parker Washington|Pat Bryant|Pat Freiermuth|Patrick Gurd|Patrick Herbert|Patrick Mahomes|Patrick Murtagh|Patrick Ricard|Payne Durham|Pharaoh Brown|Phil Mafah|Phillip Dorsett|Pierre Strong|Princeton Fant|Puka Nacua|Qadir Ismail|Quentin Johnston|Quentin Moore|Quentin Skinner|Quez Watkins|Quincy Skinner|Quinn Ewers|Quinshon Judkins|Quintin Morris|RJ Harvey|Rachaad White|Raheim Sanders|Rashee Rice|Rasheen Ali|Rashid Shaheed|Rashod Bateman|Ray Davis|Reggie Gilliam|Reggie Virgil|Rhamondre Stevenson|Ricky Pearsall|Ricky White|Rico Dowdle|Riley Leonard|Riley Nowakowski|Riley Patterson|Robbie Ouzts|Robert Henry|Robert Tonyan|Roman Hemby|Roman Wilson|Rome Odunze|Romeo Doubs|Ronnie Bell|Ronnie Rivers|Roschon Johnson|Ryan Fitzgerald|Ryan Flournoy|Ryan Miller|Salvon Ahmed|Sam Darnold|Sam Ehlinger|Sam Hartman|Sam Howell|Sam LaPorta|Sam Roush|Samaje Perine|Samori Toure|Saquon Barkley|Savion Williams|Scott Matlock|Scotty Miller|Sean Clifford|Sean Tucker|Seth McGowan|Seydou Traore|Shane Buechele|Shawn Bowman|Shedeur Sanders|Shedrick Jackson|Simi Fehoko|Sincere McCormick|Sione Vaki|Skylar Thompson|Skyler Bell|Skyy Moore|Spencer Rattler|Spencer Shrader|Stefon Diggs|Stephen Carlson|Stephen Gosnell|Sterling Shepard|Stetson Bennett|T.J. Hockenson|Tahj Brooks|Tai Felton|Tank Bigsby|Tank Dell|Tanner Arkin|Tanner Conner|Tanner Hudson|Tanner Koziol|Tanner McKee|Tay Martin|Taylen Green|Teagan Quitoriano|Ted Hurst|Tee Higgins|Tejhaun Palmer|Terrance Ferguson|Terrell Jennings|Terry McLaurin|Tetairoa McMillan|Tez Johnson|Theo Johnson|Thomas Fidone|Thomas Gordon|Thomas Yassmin|Tim Jones|Tim Patrick|Tip Reiman|Tom Kennedy|Tommy DeVito|Tommy Tremble|Tony Pollard|Tory Horton|Travis Etienne|Travis Homer|Travis Hunter|Travis Kelce|Tre Tucker|Tre Watson|Tre' Harris|TreVeyon Henderson|Trebor Pena|Trent Sherfield|Trevor Etienne|Trevor Lawrence|Trey Benson|Trey Lance|Trey McBride|Trey Sermon|Trey Smack|Treylon Burks|Treyton Welch|Treyvhon Saunders|Troy Franklin|Tua Tagovailoa|Tucker Kraft|Tutu Atwell|Ty Chandler|Ty Johnson|Ty Pezza|Ty Simpson|Tyjae Spears|Tylan Wallace|Tyler Allgeier|Tyler Badie|Tyler Bass|Tyler Conklin|Tyler Goodson|Tyler Higbee|Tyler Huntley|Tyler Loop|Tyler Scott|Tyler Shough|Tyler Warren|Tyquan Thornton|Tyrell Shavers|Tyren Montgomery|Tyrod Taylor|Tyrone Tracy|Tyson Bagent|Van Jefferson|Velus Jones|Vinny Anthony|Wan'Dale Robinson|Wesley Grimes|Wil Lutz|Will Howard|Will Kacmarek|Will Levis|Will Mallory|Will Pauling|Will Reichard|Will Sheppard|Will Shipley|Woody Marks|Xavier Gipson|Xavier Guillory|Xavier Hutchinson|Xavier Legette|Xavier Restrepo|Xavier Smith|Xavier Weaver|Xavier Worthy|Zach Charbonnet|Zach Ertz|Zach Wilson|Zachariah Branch|Zaire Mitchell-Paden|Zamir White|Zavier Scott|Zavion Thomas|Zay Flowers|Zay Jones";
+
+/* Built on first use, not on load, because most visits never paste. A surname
+   shared by two players resolves only when both shorten to the same thing;
+   otherwise it is left alone rather than guessed at. */
+let SKILL_IDX = null;
+function skillIndex() {
+  if (SKILL_IDX) return SKILL_IDX;
+  const last = {}, first = {}, pair = {};
+  NFL_SKILL.split("|").forEach(full => {
+    const bits = full.split(" ");
+    const f = bits[0], l = nameKeyRaw(bits.slice(1).join(" "));
+    if (!f || !l) return;
+    const short = f[0].toUpperCase() + ". " + l;
+    pair[nameKey(f) + " " + nameKey(l)] = short;
+    (last[nameKey(l)] = last[nameKey(l)] || new Set()).add(short);
+    (first[nameKey(f)] = first[nameKey(f)] || new Set()).add(short);
+  });
+  const only = m => { const o = {}; Object.keys(m).forEach(k => { if (m[k].size === 1) o[k] = [...m[k]][0]; }); return o; };
+  SKILL_IDX = { pair: pair, last: only(last), first: only(first) };
+  return SKILL_IDX;
 }
 
+const NAME_SUFFIX = /\s+(?:jr|sr|ii|iii|iv|v)\.?$/i;
+function nameKeyRaw(s) { return String(s || "").replace(NAME_SUFFIX, "").trim(); }
+function nameKey(s) { return String(s || "").toLowerCase().replace(/[^a-z]/g, ""); }
+
+function titleCase(s) {
+  return String(s).replace(/\S+/g, w =>
+    /[A-Z]/.test(w) ? w : w.charAt(0).toUpperCase() + w.slice(1));
+}
+
+/* How this group already writes a name wins, then the roster. A name the
+   roster cannot pin down is left exactly as typed. */
 function expandName(raw, idx) {
   const t = String(raw || "").trim().replace(/\s+/g, " ");
   if (!t) return "";
-  if (t.split(" ").length === 1) {
-    const hit = (idx || {})[t.toLowerCase().replace(/[^a-z'-]/g, "")];
-    if (hit) return hit;
+  const words = t.split(" ");
+  let mine = null;
+  if (words.length === 1) {
+    mine = (idx || {})[t.toLowerCase().replace(/[^a-z'-]/g, "")] || null;
+    // a one-word memory is no better than what he just typed, so let the
+    // roster have a go before falling back to it
+    if (mine && /\s/.test(mine)) return mine;
   }
-  return titleCase(t);
+  const S = skillIndex();
+  if (words.length > 1) {
+    const surname = nameKeyRaw(words.slice(1).join(" "));
+    const exact = S.pair[nameKey(words[0]) + " " + nameKey(surname)];
+    if (exact) return exact;
+    const bySurname = S.last[nameKey(surname)];      // covers a misspelt first name
+    if (bySurname) return bySurname;
+  } else {
+    if (S.last[nameKey(t)]) return S.last[nameKey(t)];
+    if (S.first[nameKey(t)]) return S.first[nameKey(t)];
+  }
+  return mine || titleCase(t);
 }
 
 /* One loose line into the shape the app stores: who, direction, number, then
