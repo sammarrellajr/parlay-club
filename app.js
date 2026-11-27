@@ -135,7 +135,7 @@ function cleanEntry(e) {
   Object.keys(e.picks || {}).forEach(p => {
     const v = e.picks[p] || {};
     picks[p] = {
-      result: ["W", "L", "P"].includes(v.result) ? v.result : null,   // P = pending
+      result: ["W", "L", "T", "P"].includes(v.result) ? v.result : null,   // T = push, P = pending
       pick: v.pick || ""
     };
   });
@@ -163,10 +163,11 @@ function inPlayEntries(data) {
 
 /* Wins, losses and legs still to play on one slate. */
 function tally(data, entry) {
-  const t = { w: 0, l: 0, p: 0, blank: 0 };
+  const t = { w: 0, l: 0, t: 0, p: 0, blank: 0 };
   data.players.forEach(pl => {
     const r = (entry.picks[pl] || {}).result;
-    if (r === "W") t.w++; else if (r === "L") t.l++; else if (r === "P") t.p++; else t.blank++;
+    if (r === "W") t.w++; else if (r === "L") t.l++; else if (r === "T") t.t++;
+    else if (r === "P") t.p++; else t.blank++;
   });
   return t;
 }
@@ -201,7 +202,7 @@ function entryLabel(iso, league) {
 
 /* ---------- stats ---------- */
 
-function blankRec() { return { w: 0, l: 0 }; }
+function blankRec() { return { w: 0, l: 0, t: 0 }; }
 
 function v_result(entry, player) {
   return (entry.picks[player] || {}).result || null;
@@ -229,16 +230,20 @@ function computeStats(data) {
   const summaries = [];
 
   data.entries.forEach(e => {
-    const s = { id: e.id, label: e.label, league: e.league, date: e.date, w: 0, l: 0, counted: 0, pending: 0, perfect: true };
+    const s = { id: e.id, label: e.label, league: e.league, date: e.date,
+                w: 0, l: 0, t: 0, counted: 0, pending: 0, perfect: true };
     data.players.forEach(p => {
       const raw = v_result(e, p);
-      // Pending and blank both sit out of the record and out of streaks.
+      // Pending and blank sit out of the record and out of streaks. A push is
+      // settled, so it counts towards the slate being done, but it is not a
+      // win or a loss: it stays out of the record and the run carries through
+      // it rather than breaking on it.
       const res = raw === "W" || raw === "L" ? raw : null;
       per[p].seq[e.league].push(res);
       per[p].seq.all.push(res);          // entries are date-sorted, so this is chronological
       if (raw === "P") { s.pending += 1; s.perfect = false; return; }
-      if (!res) { s.perfect = false; return; }
-      const b = res === "W" ? "w" : "l";
+      if (!res && raw !== "T") { s.perfect = false; return; }
+      const b = raw === "T" ? "t" : res === "W" ? "w" : "l";
       per[p][e.league][b] += 1;
       per[p].all[b] += 1;
       group[e.league][b] += 1;
@@ -247,11 +252,14 @@ function computeStats(data) {
       s.counted += 1;
       if (res === "L") s.perfect = false;
     });
+    // Five pushes is a refund, not a parlay. A win has to be in there.
+    if (!s.w) s.perfect = false;
     summaries.push(s);
   });
 
-  /* A parlay cashes only when every leg wins, so the entry needs a settled
-     result for all five and not one loss among them. */
+  /* A parlay cashes when no leg loses and at least one wins. A pushed leg
+     drops out of the bet at the book and pays at the shorter price, so it
+     does not stop the slate cashing. */
   const parlays = { cfb: 0, nfl: 0, all: 0 };
   const settled = { cfb: 0, nfl: 0, all: 0 };
   summaries.forEach(s => {
@@ -364,7 +372,8 @@ function soloLosses(data, player, league) {
     if (league && e.league !== league) return;
     if ((e.picks[player] || {}).result !== "L") return;
     const rest = data.players.filter(p => p !== player);
-    if (rest.every(p => (e.picks[p] || {}).result === "W")) n++;
+    // a push beside him is not a miss, so he was still the only one
+    if (rest.every(p => { const r = (e.picks[p] || {}).result; return r === "W" || r === "T"; })) n++;
   });
   return n;
 }
@@ -411,7 +420,8 @@ function fmtPct(v, rec) {
   return (v * 100).toFixed(1) + "%";
 }
 
-function fmtRec(rec) { return `${rec.w}-${rec.l}`; }
+/* Pushes only show when there are some, so a clean record stays two numbers. */
+function fmtRec(rec) { return rec.t ? `${rec.w}-${rec.l}-${rec.t}` : `${rec.w}-${rec.l}`; }
 
 function pctClass(v, rec) {
   if (rec && rec.w + rec.l === 0) return "even";
@@ -872,7 +882,7 @@ function seasonRec(data, player, league) {
   data.entries.forEach(e => {
     if (league && e.league !== league) return;
     const r = (e.picks[player] || {}).result;
-    if (r === "W") rec.w++; else if (r === "L") rec.l++;
+    if (r === "W") rec.w++; else if (r === "L") rec.l++; else if (r === "T") rec.t++;
   });
   return rec;
 }
@@ -895,9 +905,10 @@ function moneyFor(data, league) {
   return { wagered, won, net: won - wagered, unpriced, stake };
 }
 
-/* Every leg a win. */
+/* No leg lost, and at least one won. A push rides along without killing it. */
 function isParlay(data, entry) {
-  return data.players.every(p => (entry.picks[p] || {}).result === "W");
+  const res = data.players.map(p => (entry.picks[p] || {}).result);
+  return res.some(r => r === "W") && res.every(r => r === "W" || r === "T");
 }
 
 /* "$62.50", "-$40", "$0" */
@@ -1247,7 +1258,8 @@ function buildSlateCard(data, entry, siteUrl) {
   });
 
   let w = 0, l = 0, pend = 0;
-  rows.forEach(r => { if (r.result === "W") w++; else if (r.result === "L") l++; else pend++; });
+  rows.forEach(r => { if (r.result === "W") w++; else if (r.result === "L") l++;
+                      else if (r.result !== "T") pend++; });
 
   /* The odds ride at the top of the card when they were logged. When they
      were not, the line is dropped and the header simply closes up. */
@@ -1332,7 +1344,7 @@ function buildSlateCard(data, entry, siteUrl) {
     }
 
     // a settled leg gets its mark; a pending one stays quiet
-    if (r.result === "W" || r.result === "L") {
+    if (r.result === "W" || r.result === "L" || r.result === "T") {
       const [bg, fg] = cellColors(r.result);
       const cw = 66, ch = 48, cxr = tx + tw - 30 - cw;
       ctx.fillStyle = bg;
@@ -1393,7 +1405,7 @@ function buildStandingsCard(data, siteUrl) {
   let hits = 0, done = 0;
   data.entries.forEach(e => {
     const t = tally(data, e);
-    if (t.w + t.l !== data.players.length) return;
+    if (t.w + t.l + t.t !== data.players.length) return;
     done++;
     if (t.l === 0) hits++;
   });
