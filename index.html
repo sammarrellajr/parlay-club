@@ -24,7 +24,7 @@
 .prow.all .ptop { display: flex; align-items: center; gap: 11px; }
 
 .pchev {
-  color: var(--dim); font-size: 11px; flex: none;
+  color: var(--muted); font-size: 12px; flex: none;
   transition: transform 0.18s;
 }
 .prow.all.open .pchev { transform: rotate(90deg); }
@@ -192,17 +192,6 @@
 
 /* ---- The weekend table. Two columns, because the only question on a Monday
        is who took college and who took the NFL. ---- */
-.wknav { display: flex; align-items: center; gap: 6px; flex: none; }
-.wknav button {
-  appearance: none; border: 0; background: transparent; color: var(--muted);
-  font-size: 10px; padding: 5px 6px; cursor: pointer; line-height: 1;
-  -webkit-tap-highlight-color: transparent;
-}
-.wknav button:disabled { opacity: 0.25; cursor: default; }
-.wknav #wkLabel {
-  font-size: 11px; font-weight: 750; color: var(--muted);
-  font-variant-numeric: tabular-nums; min-width: 66px; text-align: center;
-}
 .wkbar { display: flex; align-items: baseline; justify-content: space-between;
   gap: 10px; margin: -2px 0 9px; }
 .wkbar span { font-size: 11px; color: var(--dim); overflow: hidden;
@@ -215,6 +204,21 @@
 .wktop { display: grid; grid-template-columns: 13px 1fr 52px 52px 60px 10px;
   gap: 6px; align-items: center; }
 
+.lrec { display: block; text-align: center; font-size: 12.5px; font-weight: 700;
+  padding: 5px 0; border-radius: 7px; color: var(--muted);
+  background: var(--panel-2); font-variant-numeric: tabular-nums;
+  white-space: nowrap; }
+.lrec.none { color: var(--dim); background: transparent; font-weight: 600; }
+.sgrid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 7px;
+  margin-bottom: 11px; }
+.scell { background: var(--panel-2); border: 1px solid var(--line);
+  border-radius: 9px; padding: 7px 4px; text-align: center; }
+.scv { display: block; font-size: 14px; font-weight: 800; color: var(--text);
+  font-variant-numeric: tabular-nums; }
+.scv.good { color: var(--accent-soft); }
+.scv.bad { color: var(--loss-soft); }
+.scl { display: block; margin-top: 2px; font-size: 8.5px; font-weight: 800;
+  letter-spacing: 0.6px; text-transform: uppercase; color: var(--dim); }
 .wkc { display: block; text-align: center; font-size: 12.5px; font-weight: 800;
   padding: 5px 0; border-radius: 7px; font-variant-numeric: tabular-nums; }
 .wkc.w { background: var(--accent-bg); color: var(--accent-soft); }
@@ -316,12 +320,7 @@
   <div class="rule"></div>
 
   <div class="sec-head">
-    <h2 id="secTitle">This weekend</h2>
-    <span class="wknav" id="wknav">
-      <button type="button" id="wkPrev" aria-label="Earlier weekend">&#9664;</button>
-      <span id="wkLabel"></span>
-      <button type="button" id="wkNext" aria-label="Later weekend">&#9654;</button>
-    </span>
+    <h2 id="secTitle">Standings</h2>
   </div>
   <div class="wkbar"><span id="wkSlates"></span><span class="note" id="secNote"></span></div>
   <div class="wkhead" id="wkHead" hidden><b></b><b></b><b>College</b><b>NFL</b><b>Season</b><b></b></div>
@@ -356,8 +355,7 @@
 let DATA = null;
 let STATS = null;
 let LG = "all";
-let OPEN = null;
-let WKI = 0;            // which weekend the All tab shows, 0 being the latest        // name of the expanded row in the All view
+let OPEN = null;        // name of the expanded row in the All view
 
 const $ = id => document.getElementById(id);
 
@@ -569,9 +567,9 @@ function render() {
   const ladder = ladderColors(rows.map(r => r[key]));
 
   const isAll = key === "all";
-  $("secTitle").textContent = isAll ? "This weekend" : "Individual records";
-  $("wknav").style.display = isAll ? "flex" : "none";
-  if (!isAll) { $("wkSlates").textContent = ""; $("wkHead").hidden = true; }
+  $("secTitle").textContent = isAll ? "Standings" : "Individual records";
+  $("wkSlates").textContent = isAll ? "Tap a name for their stats" : "";
+  if (!isAll) $("wkHead").hidden = true;
 
   if (isAll) { renderAll(rows, ladder); renderHistory("all", "Overall"); return; }
 
@@ -642,34 +640,27 @@ function rungStyle(c) {
 }
 
 /* One row per person carrying both records, expandable to their own weeks. */
-/* One weekend cell. weekendCell has already worked out whether the person
-   went 1-0, 2-1 or is still waiting; this only decides how it looks. */
-function wkCell(c) {
-  const k = c.kind;
-  const cls = k === "W" ? "w" : k === "L" ? "l" : k === "P" ? "p" : k === "none" ? "none" : "even";
-  const txt = k === "P" && /pending/i.test(c.text) ? "P" : c.text;
-  return '<span class="wkc ' + cls + '">' + esc(txt) + "</span>";
+/* Six numbers that differ person to person. Parlays hit is not one of them:
+   all five legs have to land, so that record is identical for everybody. */
+function statGrid(r) {
+  const cell = (lab, val, cls) =>
+    '<div class="scell"><span class="scv' + (cls ? " " + cls : "") + '">' + val +
+    '</span><span class="scl">' + lab + "</span></div>";
+  const st = r.streak.all, best = r.best.all, solo = r.solo.all;
+  return '<div class="sgrid">' +
+    cell("Win rate", fmtPct(pct(r.all), r.all)) +
+    cell("College", r.cfb.w + r.cfb.l ? fmtPct(r.cfbPct, r.cfb) : "&mdash;") +
+    cell("NFL", r.nfl.w + r.nfl.l ? fmtPct(r.nflPct, r.nfl) : "&mdash;") +
+    cell("Best run", best ? best + (best === 1 ? " win" : " straight") : "&mdash;") +
+    cell("Current", st >= 2 ? "W" + st : st <= -2 ? "L" + (-st) : "&mdash;",
+         st >= 2 ? "good" : st <= -2 ? "bad" : "") +
+    cell("Only miss", solo ? solo + (solo === 1 ? " slate" : " slates") : "never",
+         solo ? "bad" : "") +
+    "</div>";
 }
-
-/* Newest weekend first, so index 0 is the one being argued about. */
-function renderWeekendHead() {
-  const list = weekends(DATA);
-  if (!list.length) { $("wkLabel").textContent = ""; $("wkSlates").textContent = ""; return null; }
-  WKI = Math.max(0, Math.min(WKI, list.length - 1));
-  const wk = list[WKI];
-  $("wkLabel").textContent = wk.label;
-  $("wkSlates").textContent = wk.entries.map(e => e.label).join("  \u00b7  ");
-  $("wkPrev").disabled = WKI >= list.length - 1;
-  $("wkNext").disabled = WKI <= 0;
-  return wk;
-}
-
-$("wkPrev").addEventListener("click", () => { WKI++; OPEN = null; if (STATS) render(); });
-$("wkNext").addEventListener("click", () => { WKI--; OPEN = null; if (STATS) render(); });
 
 function renderAll(rows, ladder) {
-  const wk = renderWeekendHead();
-  $("wkHead").hidden = !wk;
+  $("wkHead").hidden = false;
   $("rows").innerHTML = rows.map((r, i) => {
     const played = r.all.w + r.all.l;
     const lead = isLeader("all", r.name, played);
@@ -678,18 +669,12 @@ function renderAll(rows, ladder) {
       ? streakBadge(st)
       : '<span class="nodata">No results yet</span>';
 
-    const bar = (lab, rc) => {
-      const n = rc.w + rc.l;
-      return `<div class="lgrow">
-        <div class="lgl">${lab}</div>
-        <div class="lgt"><div class="lgf" style="width:${n ? (rc.w / n * 100).toFixed(1) : 0}%"></div></div>
-        <div class="lgv">${n ? fmtRec(rc) : "&mdash;"}</div>
-      </div>`;
-    };
-
-    const cells = wk
-      ? wkCell(weekendCell(wk.entries, "cfb", r.name)) + wkCell(weekendCell(wk.entries, "nfl", r.name))
-      : '<span class="wkc none">&mdash;</span><span class="wkc none">&mdash;</span>';
+    /* A pending leg is not a result, so it never lands here: the record
+       counts settled legs only and the live slate shows up top instead. */
+    const lrec = rc => (rc.w + rc.l + rc.t)
+      ? '<span class="lrec">' + fmtRec(rc) + "</span>"
+      : '<span class="lrec none">&mdash;</span>';
+    const cells = lrec(r.cfb) + lrec(r.nfl);
 
     return `<div class="prow all${lead ? " lead" : ""}${OPEN === r.name ? " open" : ""}" data-nm="${esc(r.name)}">
       <div class="wktop">
@@ -703,13 +688,12 @@ function renderAll(rows, ladder) {
         <span class="pchev">&#9654;</span>
       </div>
       <div class="pdet">
-        ${bar("College", r.cfb)}
-        ${bar("NFL", r.nfl)}
+        ${statGrid(r)}
         <div class="lgform">
           <div class="lgl">Last 10</div>
           <div class="form" title="Last 10 legs, oldest first">${formStrip(r.name, null)}</div>
         </div>
-        ${personDetail(r, "all")}
+        ${personWeeks(r.name, null)}
       </div>
     </div>`;
   }).join("");
