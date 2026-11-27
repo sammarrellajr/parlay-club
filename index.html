@@ -175,6 +175,20 @@
 .hero-val.down { color: var(--loss); }
 .hero-sub { font-size: 12.5px; color: var(--muted); margin-top: 5px; }
 
+/* The split that decides whether any of this works. It lived three screens
+   down inside a collapsed panel, which is nowhere. */
+.lsplit { padding: 11px 0 12px; border-bottom: 1px solid var(--line); }
+.lspr { display: grid; grid-template-columns: 56px 1fr auto;
+  align-items: baseline; gap: 9px; }
+.lspr + .lspr { margin-top: 7px; }
+.lspl { font-size: 10px; font-weight: 800; letter-spacing: 0.7px;
+  text-transform: uppercase; color: var(--dim); }
+.lspd { font-size: 11.5px; color: var(--dim); min-width: 0;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lspv { font-size: 14px; font-weight: 800; font-variant-numeric: tabular-nums;
+  white-space: nowrap; }
+.lspv.up { color: var(--accent-soft); }
+.lspv.down { color: var(--loss-soft); }
 .strip { display: flex; padding: 13px 0; border-bottom: 1px solid var(--line); margin-bottom: 6px; }
 .strip > div { flex: 1; padding-right: 10px; min-width: 0; }
 .strip > div + div { border-left: 1px solid var(--line); padding-left: 13px; }
@@ -316,6 +330,8 @@
   <div class="hero" id="hero"></div>
 
   <div class="strip" id="strip"></div>
+
+  <div class="lsplit" id="lsplit" hidden></div>
 
   <div class="rule"></div>
 
@@ -526,6 +542,7 @@ function render() {
   const rows = STATS.byLeague[key];
   const n = STATS.counts[key];
 
+  const live = inPlayEntries(DATA).filter(e => key === "all" || e.league === key).length;
   const won = STATS.parlays[key];
   const done = STATS.settled[key];
   const m = STATS.money[key];
@@ -537,6 +554,7 @@ function render() {
      <div class="hero-val ${m.net > 0 ? "up" : m.net < 0 ? "down" : ""}">${fmtMoney(m.net)}</div>
      <div class="hero-sub">${fmtMoney(m.wagered)} wagered &middot; ${fmtMoney(m.won)} back &middot; ${
        n} ${key === "all" ? (n === 1 ? "slate" : "slates") : (n === 1 ? "week" : "weeks")}${
+       live ? " &middot; " + live + " in play" : ""}${
        m.unpriced ? " &middot; " + m.unpriced + " payout" +
        (m.unpriced === 1 ? "" : "s") + " not entered" : ""}</div>`;
 
@@ -555,6 +573,22 @@ function render() {
        <div class="s-val">${run.n ? "W" + run.n : "&mdash;"}</div>
        <div class="s-lbl">${run.n ? "Best run &middot; " + esc(run.who) : "Best run"}</div>
      </div>`;
+  /* Both leagues cost the same $5 a week. Only one of them has paid for
+     itself, and that belongs where people actually look. */
+  const ls = $("lsplit");
+  if (key === "all") {
+    const lsLine = (lab, m) =>
+      '<div class="lspr"><span class="lspl">' + lab + '</span>' +
+      '<span class="lspd">' + fmtMoney(m.wagered) + " in &middot; " +
+      fmtMoney(m.won) + ' back</span><span class="lspv ' +
+      (m.net > 0 ? "up" : m.net < 0 ? "down" : "") + '">' + fmtMoney(m.net) +
+      "</span></div>";
+    ls.innerHTML = lsLine("College", STATS.money.cfb) + lsLine("NFL", STATS.money.nfl);
+    ls.hidden = false;
+  } else {
+    ls.hidden = true;
+  }
+
   const hot = rows.filter(r => r.streak[key] >= 2).length;
   const cold = rows.filter(r => r.streak[key] <= -2).length;
   const pend = STATS.pending[key];
