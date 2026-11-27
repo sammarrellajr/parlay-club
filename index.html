@@ -395,7 +395,7 @@ function renderInPlay() {
     const t = tally(DATA, e);
     const legs = DATA.players.map(p => {
       const v = e.picks[p] || {};
-      const cls = v.result === "W" ? "w" : v.result === "L" ? "l" : v.result === "P" ? "p" : "none";
+      const cls = v.result === "W" ? "w" : v.result === "L" ? "l" : v.result === "T" ? "t" : v.result === "P" ? "p" : "none";
       const mark = v.result === "P" ? "P" : (v.result || "-");
       return `<div class="ip-leg"><span class="dot ${cls}">${mark}</span>` +
              `<span class="ip-nm">${esc(p)}</span>` +
@@ -657,7 +657,7 @@ function personWeeks(name, league) {
 
   return mine.map(e => {
     const v = e.picks[name] || {};
-    const cls = v.result === "W" ? "w" : v.result === "L" ? "l" : v.result === "P" ? "p" : "none";
+    const cls = v.result === "W" ? "w" : v.result === "L" ? "l" : v.result === "T" ? "t" : v.result === "P" ? "p" : "none";
     const mark = v.result || "-";
     return `<div class="drow">
       <span class="dwk">${esc(shortDate(e.date) || e.label)}</span>
@@ -703,7 +703,7 @@ function renderHistory(key, name) {
     const s = sums[e.id] || { w: 0, l: 0 };
     const body = DATA.players.map(p => {
       const v = e.picks[p] || {};
-      const cls = v.result === "W" ? "w" : v.result === "L" ? "l" : v.result === "P" ? "p" : "none";
+      const cls = v.result === "W" ? "w" : v.result === "L" ? "l" : v.result === "T" ? "t" : v.result === "P" ? "p" : "none";
       const mark = v.result === "P" ? "P" : (v.result || "-");
       const pick = v.pick
         ? `<span class="wl-pick">${esc(v.pick)}</span>`
