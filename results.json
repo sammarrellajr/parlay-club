@@ -853,8 +853,6 @@
       "id": "2026-11-26-nfl",
       "date": "2026-11-26",
       "league": "nfl",
-      "label": "Thu 11/26 NFL",
-      "odds": "+1169",
       "picks": {
         "Drew": {
           "result": "T",
@@ -875,6 +873,38 @@
         "Tyler": {
           "result": "W",
           "pick": "J. Gibbs Over 138.5 Rush + Rec"
+        }
+      },
+      "odds": "+1169",
+      "payout": 0,
+      "label": "Thu 11/26 NFL"
+    },
+    {
+      "id": "2026-11-27-cfb",
+      "date": "2026-11-27",
+      "league": "cfb",
+      "label": "Fri 11/27 College",
+      "odds": "",
+      "picks": {
+        "Drew": {
+          "result": "P",
+          "pick": "Minnesota +9.5"
+        },
+        "Pat": {
+          "result": "P",
+          "pick": "Air Force +7.5"
+        },
+        "Sam": {
+          "result": "P",
+          "pick": "Texas Team Total Over 26.5"
+        },
+        "Tim": {
+          "result": "P",
+          "pick": "Texas -10.5"
+        },
+        "Tyler": {
+          "result": "P",
+          "pick": "Utah -25.5"
         }
       },
       "payout": 0
