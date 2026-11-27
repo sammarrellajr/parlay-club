@@ -144,7 +144,7 @@ function render() {
 
     const picks = DATA.players.map(p => {
       const v = e.picks[p] || {};
-      const cls = v.result === "W" ? "w" : v.result === "L" ? "l" : v.result === "P" ? "p" : "none";
+      const cls = v.result === "W" ? "w" : v.result === "L" ? "l" : v.result === "T" ? "t" : v.result === "P" ? "p" : "none";
       const mark = v.result === "P" ? "P" : (v.result || "-");
       return `<div class="hpick"><span class="dot ${cls}">${mark}</span>` +
              `<span class="pnm2">${esc(p)}</span>` +
