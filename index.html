@@ -190,6 +190,41 @@
 .form i { width: 7px; height: 7px; border-radius: 2px; flex: none; background: var(--panel-hi); }
 .form i.w { background: var(--accent); }
 
+/* ---- The weekend table. Two columns, because the only question on a Monday
+       is who took college and who took the NFL. ---- */
+.wknav { display: flex; align-items: center; gap: 6px; flex: none; }
+.wknav button {
+  appearance: none; border: 0; background: transparent; color: var(--muted);
+  font-size: 10px; padding: 5px 6px; cursor: pointer; line-height: 1;
+  -webkit-tap-highlight-color: transparent;
+}
+.wknav button:disabled { opacity: 0.25; cursor: default; }
+.wknav #wkLabel {
+  font-size: 11px; font-weight: 750; color: var(--muted);
+  font-variant-numeric: tabular-nums; min-width: 66px; text-align: center;
+}
+.wkbar { display: flex; align-items: baseline; justify-content: space-between;
+  gap: 10px; margin: -2px 0 9px; }
+.wkbar span { font-size: 11px; color: var(--dim); overflow: hidden;
+  text-overflow: ellipsis; white-space: nowrap; }
+
+.wkhead { display: grid; grid-template-columns: 14px 1fr 44px 44px 54px 10px;
+  gap: 7px; align-items: center; padding: 0 13px 6px; }
+.wkhead b { font-size: 9px; font-weight: 800; letter-spacing: 0.7px;
+  text-transform: uppercase; color: var(--dim); text-align: center; }
+.wktop { display: grid; grid-template-columns: 14px 1fr 44px 44px 54px 10px;
+  gap: 7px; align-items: center; }
+
+.wkc { display: block; text-align: center; font-size: 12.5px; font-weight: 800;
+  padding: 5px 0; border-radius: 7px; font-variant-numeric: tabular-nums; }
+.wkc.w { background: var(--accent-bg); color: var(--accent-soft); }
+.wkc.l { background: var(--loss-bg); color: var(--loss-soft); }
+.wkc.p { background: var(--gold-bg); color: var(--gold-soft); }
+.wkc.even { background: var(--panel-2); color: var(--text); }
+.wkc.none { color: var(--dim); font-weight: 600; }
+.wktop .prec { text-align: center; padding: 4px 3px; font-size: 13px; }
+.wktop .pnm { font-size: 15px; }
+
 /* ---- Two foldaway sections at the foot of the page. Both start shut, so
        opening the app answers "who is winning" in one screen instead of
        scrolling past twenty-six slates to get there. ---- */
@@ -280,9 +315,15 @@
   <div class="rule"></div>
 
   <div class="sec-head">
-    <h2 id="secTitle">Individual records</h2>
-    <span class="note" id="secNote"></span>
+    <h2 id="secTitle">This weekend</h2>
+    <span class="wknav" id="wknav">
+      <button type="button" id="wkPrev" aria-label="Earlier weekend">&#9664;</button>
+      <span id="wkLabel"></span>
+      <button type="button" id="wkNext" aria-label="Later weekend">&#9654;</button>
+    </span>
   </div>
+  <div class="wkbar"><span id="wkSlates"></span><span class="note" id="secNote"></span></div>
+  <div class="wkhead" id="wkHead" hidden><b></b><b></b><b>College</b><b>NFL</b><b>Season</b><b></b></div>
   <div class="rows" id="rows"></div>
   <button class="btn wide stand-share" id="shareStandings">Share Standings Update</button>
 
@@ -314,7 +355,8 @@
 let DATA = null;
 let STATS = null;
 let LG = "all";
-let OPEN = null;        // name of the expanded row in the All view
+let OPEN = null;
+let WKI = 0;            // which weekend the All tab shows, 0 being the latest        // name of the expanded row in the All view
 
 const $ = id => document.getElementById(id);
 
@@ -525,7 +567,12 @@ function render() {
 
   const ladder = ladderColors(rows.map(r => r[key]));
 
-  if (key === "all") { renderAll(rows, ladder); renderHistory("all", "Overall"); return; }
+  const isAll = key === "all";
+  $("secTitle").textContent = isAll ? "This weekend" : "Individual records";
+  $("wknav").style.display = isAll ? "flex" : "none";
+  if (!isAll) { $("wkSlates").textContent = ""; $("wkHead").hidden = true; }
+
+  if (isAll) { renderAll(rows, ladder); renderHistory("all", "Overall"); return; }
 
   /* The league tabs open the same way the All tab does, showing only that
      league's picks, because "how has Tim done in NFL" is the question the tab
@@ -594,7 +641,34 @@ function rungStyle(c) {
 }
 
 /* One row per person carrying both records, expandable to their own weeks. */
+/* One weekend cell. weekendCell has already worked out whether the person
+   went 1-0, 2-1 or is still waiting; this only decides how it looks. */
+function wkCell(c) {
+  const k = c.kind;
+  const cls = k === "W" ? "w" : k === "L" ? "l" : k === "P" ? "p" : k === "none" ? "none" : "even";
+  const txt = k === "P" && /pending/i.test(c.text) ? "P" : c.text;
+  return '<span class="wkc ' + cls + '">' + esc(txt) + "</span>";
+}
+
+/* Newest weekend first, so index 0 is the one being argued about. */
+function renderWeekendHead() {
+  const list = weekends(DATA);
+  if (!list.length) { $("wkLabel").textContent = ""; $("wkSlates").textContent = ""; return null; }
+  WKI = Math.max(0, Math.min(WKI, list.length - 1));
+  const wk = list[WKI];
+  $("wkLabel").textContent = wk.label;
+  $("wkSlates").textContent = wk.entries.map(e => e.label).join("  \u00b7  ");
+  $("wkPrev").disabled = WKI >= list.length - 1;
+  $("wkNext").disabled = WKI <= 0;
+  return wk;
+}
+
+$("wkPrev").addEventListener("click", () => { WKI++; OPEN = null; if (STATS) render(); });
+$("wkNext").addEventListener("click", () => { WKI--; OPEN = null; if (STATS) render(); });
+
 function renderAll(rows, ladder) {
+  const wk = renderWeekendHead();
+  $("wkHead").hidden = !wk;
   $("rows").innerHTML = rows.map((r, i) => {
     const played = r.all.w + r.all.l;
     const lead = isLeader("all", r.name, played);
@@ -612,26 +686,30 @@ function renderAll(rows, ladder) {
       </div>`;
     };
 
+    const cells = wk
+      ? wkCell(weekendCell(wk.entries, "cfb", r.name)) + wkCell(weekendCell(wk.entries, "nfl", r.name))
+      : '<span class="wkc none">&mdash;</span><span class="wkc none">&mdash;</span>';
+
     return `<div class="prow all${lead ? " lead" : ""}${OPEN === r.name ? " open" : ""}" data-nm="${esc(r.name)}">
-      <div class="ptop">
+      <div class="wktop">
         <div class="pnum">${i + 1}</div>
         <div class="pmain">
           <div class="pnm">${esc(r.name)}</div>
           ${sub ? `<div class="psub">${sub}</div>` : ""}
         </div>
-        <div class="pright">
-          <div class="${rungClass(ladder[i])}"${rungStyle(ladder[i])}>${fmtRec(r.all)}</div>
-          <div class="ppct">${fmtPct(r.allPct, r.all)}</div>
-        </div>
+        ${cells}
+        <div class="${rungClass(ladder[i])}"${rungStyle(ladder[i])}>${fmtRec(r.all)}</div>
         <span class="pchev">&#9654;</span>
       </div>
-      ${bar("College", r.cfb)}
-      ${bar("NFL", r.nfl)}
-      <div class="lgform">
-        <div class="lgl">Last 10</div>
-        <div class="form" title="Last 10 legs, oldest first">${formStrip(r.name, null)}</div>
+      <div class="pdet">
+        ${bar("College", r.cfb)}
+        ${bar("NFL", r.nfl)}
+        <div class="lgform">
+          <div class="lgl">Last 10</div>
+          <div class="form" title="Last 10 legs, oldest first">${formStrip(r.name, null)}</div>
+        </div>
+        ${personDetail(r, "all")}
       </div>
-      <div class="pdet">${personDetail(r, "all")}</div>
     </div>`;
   }).join("");
 
