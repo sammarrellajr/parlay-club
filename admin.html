@@ -411,7 +411,7 @@ details.fold.quiet[open] > summary { color: var(--muted); margin-bottom: 4px; }
             <button class="btn" id="clearPaste">Clear</button>
           </div>
           <div class="assign" id="assign" hidden></div>
-          <div class="hint" id="pasteHint">Labels, odds and venue lines get ignored.</div>
+          <div class="hint" id="pasteHint"></div>
         </details>
 
         <button class="btn wide" id="allPending" style="margin-top:12px">Mark all pending</button>
@@ -480,6 +480,10 @@ let LG = "cfb";
 let dateTouched = false;
 
 const $ = id => document.getElementById(id);
+
+/* Said in one place, because the markup and the two reset paths all show it. */
+const PASTE_HINT = "A DraftKings slip, or the group text with each line opened by an initial: S, D, P, T for Tyler, Ti for Tim.";
+if ($("pasteHint")) $("pasteHint").textContent = PASTE_HINT;
 
 /* The banners sit at the top of the page and the Save button sits at the
    bottom, so mirror every message into the save bar. Otherwise a failed save
@@ -1115,7 +1119,7 @@ function resetForm() {
   ASSIGNED = [];
   $("assign").hidden = true;
   $("assign").innerHTML = "";
-  $("pasteHint").textContent = "Labels, odds and venue lines get ignored.";
+  $("pasteHint").textContent = PASTE_HINT;
   $("pasteFold").open = false;
   $("acct").open = false;
   $("payout").value = "";
@@ -1128,7 +1132,11 @@ let ASSIGNED = [];    // player each parsed pick belongs to, or null to skip
 
 $("fillPicks").addEventListener("click", async () => {
   if (!DATA) { say("err", "Results have not loaded yet. Connect above, then try again."); return; }
-  const slip = parseSlip($("pasteBox").value);
+  /* The group text says whose pick each line is, so take them at their word
+     rather than guessing. Anything else falls through to the slip reader. */
+  const byHand = parseInitialBlock($("pasteBox").value, DATA.players, priorNameIndex(DATA));
+  const slip = byHand ? { picks: byHand.map(r => r.pick), odds: "" }
+                      : parseSlip($("pasteBox").value);
   PARSED = slip.picks;
   if (!PARSED.length) { say("err", "Nothing that looks like a pick in that paste."); return; }
 
@@ -1138,14 +1146,16 @@ $("fillPicks").addEventListener("click", async () => {
     syncPayoutRow();
   }
 
-  ASSIGNED = autoAssign(PARSED, DATA.players, DATA);
+  ASSIGNED = byHand ? byHand.map(r => r.player) : autoAssign(PARSED, DATA.players, DATA);
   $("pasteFold").open = true;
   renderAssign();
   applyAssign();
 
-  const guessed = PARSED.filter((t, i) => ASSIGNED[i] && guessPlayer(t, DATA) === ASSIGNED[i]).length;
+  const guessed = byHand ? 0
+    : PARSED.filter((t, i) => ASSIGNED[i] && guessPlayer(t, DATA) === ASSIGNED[i]).length;
   const note = [
     "Read " + PARSED.length + " pick" + (PARSED.length === 1 ? "" : "s"),
+    byHand ? "named by initial" : "",
     slip.odds ? "at " + slip.odds : "",
     guessed ? guessed + " matched from past picks" : ""
   ].filter(Boolean).join(", ") + ".";
@@ -1231,7 +1241,7 @@ $("clearPaste").addEventListener("click", () => {
   ASSIGNED = [];
   $("assign").hidden = true;
   $("assign").innerHTML = "";
-  $("pasteHint").textContent = "Labels, odds and venue lines get ignored.";
+  $("pasteHint").textContent = PASTE_HINT;
 });
 
 /* Everything on screen that depends on the file, redrawn together. */
