@@ -995,8 +995,13 @@ function readForm() {
     if (result) marked++; else missing.push(player);   // pending counts as marked
     picks[player] = { result: result, pick: pick };
   });
-  const swept = Object.keys(picks).length > 0 &&
-    Object.keys(picks).every(p => picks[p].result === "W");
+  /* A pushed leg is void at the book and the rest of the slip still pays, so
+     a sweep is every leg W or T with at least one W. This has to agree with
+     syncPayoutRow: when it did not, the payout that row filled in was thrown
+     away on save and the slate stored a zero. */
+  const res = Object.keys(picks).map(p => picks[p].result);
+  const swept = res.length > 0 && res.every(r => r === "W" || r === "T") &&
+    res.some(r => r === "W");
   const payout = swept ? Math.max(0, parseFloat($("payout").value) || 0) : 0;
   return { picks, marked, missing, payout };
 }
@@ -1259,7 +1264,12 @@ function fillHub() {
   count.textContent = DATA && DATA.entries.length ? DATA.entries.length + " logged" : "";
   if (!DATA) { bar.hidden = true; return; }
 
-  const unsettled = p => { const r = (p || {}).result; return r !== "W" && r !== "L"; };
+  /* A push is settled. The leg is void, nothing further is coming, and
+     counting it as open left TO SETTLE stuck on forever. */
+  const unsettled = p => {
+    const r = (p || {}).result;
+    return r !== "W" && r !== "L" && r !== "T";
+  };
   const open = DATA.entries.filter(e => DATA.players.some(p => unsettled(e.picks[p])));
   if (!open.length) { bar.hidden = true; return; }
 
