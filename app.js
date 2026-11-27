@@ -674,6 +674,104 @@ function parsePastedPicks(text) {
   return parseSlip(text).picks;
 }
 
+/* ---------- the group text ---------- */
+
+/* They write the week's picks into one message, each line opened with whose
+   pick it is. Tyler takes the bare T and Tim takes Ti, because that is how
+   they already type it to each other. Full names and longer prefixes work
+   too. */
+const PICK_INITIALS = { d: "Drew", p: "Pat", s: "Sam", ti: "Tim", t: "Tyler" };
+
+/* Loose words to the house term. Order matters: "rush attempts" has to be
+   tried before "rush", and "rush/rec" before either. */
+const MARKETS = [
+  [/\b(?:rush(?:ing)?\s*[+/&]\s*rec(?:eiving)?|rec(?:eiving)?\s*[+/&]\s*rush(?:ing)?|scrimmage)\b/i, "Rush + Rec"],
+  [/\b(?:rush(?:ing)?\s*att(?:empts?)?|carries)\b/i, "Rush Attempts"],
+  [/\b(?:receptions?|catches)\b/i, "Receptions"],
+  [/\b(?:pass(?:ing)?\s*tds?)\b/i, "Pass TDs"],
+  [/\b(?:rec(?:eiving)?\s*yards?|yards?\s*rec(?:eiving)?|rec(?:eiving)?)\b/i, "Rec"],
+  [/\b(?:rush(?:ing)?\s*yards?|yards?\s*rush(?:ing)?|rush(?:ing)?)\b/i, "Rush"],
+  [/\b(?:pass(?:ing)?\s*yards?|pass(?:ing)?)\b/i, "Pass"],
+  [/\b(?:tackles?)\b/i, "Tackles"]
+];
+
+/* Surnames already in the history, so a bare "Gibbs" can come back as the
+   "J. Gibbs" that is already stored. A surname written two different ways
+   before is left alone rather than guessed at. */
+function priorNameIndex(data) {
+  const seen = {};
+  data.entries.forEach(e => Object.keys(e.picks).forEach(p => {
+    let t = ((e.picks[p] || {}).pick || "").trim();
+    if (!t) return;
+    t = t.split(/\b(?:over|under|anytime|td|touchdown|o\/u)\b/i)[0].trim();
+    t = t.replace(/[+-]?\d.*$/, "").trim();
+    if (!t || /\//.test(t)) return;          // "WVU/Cincinnati" is a game, not a person
+    const parts = t.split(/\s+/);
+    if (parts.length > 3) return;
+    const last = parts[parts.length - 1].toLowerCase().replace(/[^a-z'-]/g, "");
+    if (last.length < 4) return;
+    (seen[last] = seen[last] || new Set()).add(t);
+  }));
+  const out = {};
+  Object.keys(seen).forEach(k => { if (seen[k].size === 1) out[k] = [...seen[k]][0]; });
+  return out;
+}
+
+function titleCase(s) {
+  return String(s).replace(/\S+/g, w =>
+    /^[a-z]\.$/i.test(w) ? w.toUpperCase() : w.charAt(0).toUpperCase() + w.slice(1).toLowerCase());
+}
+
+function expandName(raw, idx) {
+  const t = String(raw || "").trim().replace(/\s+/g, " ");
+  if (!t) return "";
+  if (t.split(" ").length === 1) {
+    const hit = (idx || {})[t.toLowerCase().replace(/[^a-z'-]/g, "")];
+    if (hit) return hit;
+  }
+  return titleCase(t);
+}
+
+/* One loose line into the shape the app stores: who, direction, number, then
+   what the number is about. Anything without a direction and a number, a
+   spread or a moneyline, is left exactly as typed. */
+function tidyPick(raw, idx) {
+  let t = String(raw || "").trim().replace(/\s+/g, " ");
+  if (!t) return "";
+  t = t.replace(/\bATD\b/gi, "Anytime TD");
+  if (/\banytime td\b/i.test(t))
+    return (expandName(t.replace(/\banytime td\b/i, " ").trim(), idx) + " Anytime TD").trim();
+  const dir = t.match(/\b(over|under)\b/i);
+  const num = t.match(/\b(\d+(?:\.\d+)?)\b/);
+  if (!dir || !num) return t;
+  const name = t.slice(0, dir.index).trim();
+  const after = t.slice(dir.index + dir[0].length).replace(num[1], " ");
+  let market = "";
+  for (const [re, label] of MARKETS) if (re.test(after)) { market = label; break; }
+  const D = dir[1][0].toUpperCase() + dir[1].slice(1).toLowerCase();
+  return [expandName(name, idx), D, num[1], market].filter(Boolean).join(" ");
+}
+
+/* The whole message. Returns one row per line, or null when the lines are not
+   opened with initials, which leaves the slip reader to handle it. */
+function parseInitialBlock(text, players, idx) {
+  const byName = {};
+  players.forEach(p => byName[p.toLowerCase()] = p);
+  const lines = String(text || "").split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+  if (lines.length < 2) return null;
+  const out = [];
+  for (const line of lines) {
+    const m = line.match(/^([A-Za-z]{1,5})[\s.:,)-]+(\S.*)$/);
+    if (!m) return null;
+    const key = m[1].toLowerCase();
+    const pre = players.filter(p => p.toLowerCase().startsWith(key));
+    const who = byName[key] || PICK_INITIALS[key] || (pre.length === 1 ? pre[0] : null);
+    if (!who) return null;
+    out.push({ player: who, pick: tidyPick(m[2], idx) });
+  }
+  return out;
+}
+
 function cleanPickLine(t) {
   return t
     .replace(/^[•*]+\s*/, "")          // bullets
