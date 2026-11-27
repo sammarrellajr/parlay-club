@@ -823,8 +823,6 @@
       "id": "2026-11-22-nfl",
       "date": "2026-11-22",
       "league": "nfl",
-      "label": "Sun 11/22 NFL",
-      "odds": "+1330",
       "picks": {
         "Drew": {
           "result": "L",
@@ -845,6 +843,38 @@
         "Tyler": {
           "result": "W",
           "pick": "Emmett Johnson Over 123.5 Rush/Rec"
+        }
+      },
+      "odds": "+1330",
+      "payout": 0,
+      "label": "Sun 11/22 NFL"
+    },
+    {
+      "id": "2026-11-26-nfl",
+      "date": "2026-11-26",
+      "league": "nfl",
+      "label": "Thu 11/26 NFL",
+      "odds": "+1169",
+      "picks": {
+        "Drew": {
+          "result": "T",
+          "pick": "C. Loveland Over 52.5 Rec"
+        },
+        "Pat": {
+          "result": "W",
+          "pick": "D. Swift Anytime TD"
+        },
+        "Sam": {
+          "result": "W",
+          "pick": "J. Cook Over 20 Rush Attempts"
+        },
+        "Tim": {
+          "result": "W",
+          "pick": "R. Odunze Over 3.5 Receptions"
+        },
+        "Tyler": {
+          "result": "W",
+          "pick": "J. Gibbs Over 138.5 Rush + Rec"
         }
       },
       "payout": 0
