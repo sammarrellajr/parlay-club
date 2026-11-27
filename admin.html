@@ -208,7 +208,11 @@ details.card.fold:not([open]) { padding-bottom: 6px; }
 .legL { min-width: 0; }
 .leg .wl { grid-template-columns: 1fr 1fr; gap: 6px; }
 .leg .wl button { height: 42px; }
-.leg .wl button.pend { grid-column: 1 / -1; font-size: 10.5px; letter-spacing: 0.3px; }
+/* A push happens, but rarely, so it gets a short button next to Pending
+   rather than a third full-height one competing with W and L. */
+.leg .wl button.tie, .leg .wl button.pend {
+  height: 28px; font-size: 9.5px; letter-spacing: 0.3px;
+}
 .legL .pick-in { margin-top: 0; }
 
 /* the slate share sits under the weekend share, with its own heading */
@@ -772,6 +776,7 @@ function buildForm(entry) {
         <span class="wl">
           <button type="button" data-v="W" class="${v.result === "W" ? "on-w" : ""}">W</button>
           <button type="button" data-v="L" class="${v.result === "L" ? "on-l" : ""}">L</button>
+          <button type="button" data-v="T" class="tie ${v.result === "T" ? "on-t" : ""}">PUSH</button>
           <button type="button" data-v="P" class="pend ${v.result === "P" ? "on-p" : ""}">PENDING</button>
         </span>
       </div>
@@ -782,9 +787,11 @@ function buildForm(entry) {
     btn.addEventListener("click", () => {
       const group = btn.parentNode;
       const val = btn.dataset.v;
-      const already = btn.classList.contains("on-w") || btn.classList.contains("on-l") || btn.classList.contains("on-p");
-      group.querySelectorAll("button").forEach(b => b.classList.remove("on-w", "on-l", "on-p"));
-      if (!already) btn.classList.add(val === "W" ? "on-w" : val === "L" ? "on-l" : "on-p");
+      const already = btn.classList.contains("on-w") || btn.classList.contains("on-l") ||
+        btn.classList.contains("on-t") || btn.classList.contains("on-p");
+      group.querySelectorAll("button").forEach(b => b.classList.remove("on-w", "on-l", "on-t", "on-p"));
+      if (!already) btn.classList.add(
+        val === "W" ? "on-w" : val === "L" ? "on-l" : val === "T" ? "on-t" : "on-p");
       syncRow(btn.closest(".ebox"));
       syncPayoutRow();
     });
@@ -875,18 +882,18 @@ function halfAPick(pick) {
    the field takes the Pending back off. */
 function autoPend(row) {
   const wl = row.querySelector(".wl");
-  const on = row.querySelector(".on-w, .on-l, .on-p");
+  const on = row.querySelector(".on-w, .on-l, .on-t, .on-p");
   const typed = row.querySelector(".pick").value.trim();
   if (typed && !on) wl.querySelector('[data-v="P"]').classList.add("on-p");
   else if (!typed && on && on.dataset.v === "P") on.classList.remove("on-p");
 }
 
 function syncRow(row) {
-  const on = row.querySelector(".on-w, .on-l, .on-p");
+  const on = row.querySelector(".on-w, .on-l, .on-t, .on-p");
   const res = on ? on.dataset.v : null;
   const pick = row.querySelector(".pick").value.trim();
   const dot = row.querySelector("[data-dot]");
-  dot.className = "dot " + (res === "W" ? "w" : res === "L" ? "l" : res === "P" ? "p" : "none");
+  dot.className = "dot " + (res === "W" ? "w" : res === "L" ? "l" : res === "T" ? "t" : res === "P" ? "p" : "none");
   dot.textContent = res === "P" ? "P" : (res || "-");
   const sum = row.querySelector("[data-sum]");
   const half = halfAPick(pick);
@@ -899,7 +906,11 @@ function syncRow(row) {
 function syncPayoutRow() {
   const boxes = [...$("entries").querySelectorAll(".ebox")];
   const stake = (DATA && DATA.stake) || 5;
-  const swept = boxes.length > 0 && boxes.every(b => b.querySelector(".on-w"));
+  /* A pushed leg drops out of the bet at the book and the rest still pays,
+     so a push does not stop the payout row appearing. A loss does. */
+  const swept = boxes.length > 0 &&
+    boxes.every(b => b.querySelector(".on-w, .on-t")) &&
+    boxes.some(b => b.querySelector(".on-w"));
   $("payoutRow").style.display = swept ? "block" : "none";
 
   /* Odds on the slip already say what a sweep pays, so fill it in rather than
@@ -919,7 +930,7 @@ function syncPayoutRow() {
     ? fmtMoney(stake) + " comes back " + fmtMoney(back) + "."
     : "Off the slip. Optional.";
 
-  const marked = boxes.filter(b => b.querySelector(".on-w, .on-l, .on-p")).length;
+  const marked = boxes.filter(b => b.querySelector(".on-w, .on-l, .on-t, .on-p")).length;
   $("entriesCount").textContent = boxes.length
     ? marked + " of " + boxes.length + " marked" : "";
 }
@@ -974,7 +985,7 @@ function readForm() {
   let marked = 0;
   $("entries").querySelectorAll(".ebox").forEach(row => {
     const player = row.dataset.player;
-    const on = row.querySelector(".on-w, .on-l, .on-p");
+    const on = row.querySelector(".on-w, .on-l, .on-t, .on-p");
     const result = on ? on.dataset.v : null;
     const pick = row.querySelector(".pick").value.trim();
     if (result) marked++; else missing.push(player);   // pending counts as marked
@@ -1014,7 +1025,7 @@ $("allPending").addEventListener("click", () => {
 function setAllPending() {
   $("entries").querySelectorAll(".ebox").forEach(row => {
     const wl = row.querySelector(".wl");
-    wl.querySelectorAll("button").forEach(b => b.classList.remove("on-w", "on-l", "on-p"));
+    wl.querySelectorAll("button").forEach(b => b.classList.remove("on-w", "on-l", "on-t", "on-p"));
     wl.querySelector('[data-v="P"]').classList.add("on-p");
     syncRow(row);
   });
