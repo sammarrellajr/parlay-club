@@ -853,6 +853,8 @@
       "id": "2026-11-26-nfl",
       "date": "2026-11-26",
       "league": "nfl",
+      "label": "Thu 11/26 NFL",
+      "odds": "+1169",
       "picks": {
         "Drew": {
           "result": "T",
@@ -875,16 +877,12 @@
           "pick": "J. Gibbs Over 138.5 Rush + Rec"
         }
       },
-      "odds": "+1169",
-      "payout": 0,
-      "label": "Thu 11/26 NFL"
+      "payout": 0
     },
     {
       "id": "2026-11-27-cfb",
       "date": "2026-11-27",
       "league": "cfb",
-      "label": "Fri 11/27 College",
-      "odds": "",
       "picks": {
         "Drew": {
           "result": "P",
@@ -907,7 +905,9 @@
           "pick": "Utah -25.5"
         }
       },
-      "payout": 0
+      "odds": "",
+      "payout": 0,
+      "label": "Fri 11/27 College"
     }
   ]
 }
