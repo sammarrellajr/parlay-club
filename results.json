@@ -883,8 +883,6 @@
       "id": "2026-11-27-cfb",
       "date": "2026-11-27",
       "league": "cfb",
-      "label": "Fri 11/27 College",
-      "odds": "+1453",
       "picks": {
         "Drew": {
           "result": "L",
@@ -905,6 +903,38 @@
         "Tyler": {
           "result": "L",
           "pick": "Utah -25.5"
+        }
+      },
+      "odds": "+1453",
+      "payout": 0,
+      "label": "Fri 11/27 College"
+    },
+    {
+      "id": "2026-11-28-cfb",
+      "date": "2026-11-28",
+      "league": "cfb",
+      "label": "Sat 11/28 College",
+      "odds": "+2183",
+      "picks": {
+        "Drew": {
+          "result": "P",
+          "pick": "Wake Forest/Duke Over 55.5"
+        },
+        "Pat": {
+          "result": "P",
+          "pick": "Michigan OSU Under 36.5"
+        },
+        "Sam": {
+          "result": "P",
+          "pick": "Virginia Tech -2.5"
+        },
+        "Tim": {
+          "result": "P",
+          "pick": "Tennessee-13.5"
+        },
+        "Tyler": {
+          "result": "P",
+          "pick": "Boise/Colorado State Over 74.5"
         }
       },
       "payout": 0
